@@ -81,7 +81,11 @@ def _get_korean_financials(code: str) -> dict:
 
 def _get_us_financials(ticker: str) -> dict:
     """yfinance로 미국 주식 재무 데이터 조회."""
-    info = yf.Ticker(ticker).info
+    try:
+        info = yf.Ticker(ticker).info
+    except Exception:
+        return {"per": None, "pbr": None, "dividend_yield": None,
+                "revenue_growth": None, "operating_margin": None, "debt_ratio": None}
 
     per = info.get("trailingPE")
     pbr = info.get("priceToBook")

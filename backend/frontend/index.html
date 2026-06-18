@@ -537,7 +537,7 @@ function renderPC(data) {
   document.getElementById("pcContent").innerHTML = `
   <div class="pc-grid">
     <div class="price-card full-width">
-      <div class="stock-label">${data.ticker}</div>
+      <div class="stock-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
       <div class="price-big ${cls}" id="pcLivePrice">${Number(c.price).toLocaleString()}</div>
       <div class="price-chg ${cls}">${sgn} ${Math.abs(cr)}%</div>
       <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
@@ -576,7 +576,7 @@ function renderMobile(data) {
   const { c, ind, fin, cls, sgn, cr, vt, vc, ve } = makeData(data);
   document.getElementById("mobileContent").innerHTML = `
     <div class="m-section">
-      <div class="m-label">${data.ticker}</div>
+      <div class="m-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
       <div class="m-price-main ${cls}" id="mobileLivePrice">${Number(c.price).toLocaleString()}</div>
       <div class="m-price-chg ${cls}">${sgn} ${Math.abs(cr)}%</div>
       <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>

@@ -9,7 +9,9 @@ from indicators import calculate_indicators
 from financials import get_financials
 from analyzer import analyze
 from kis_ws import stream_price
-from stock_list import search_stocks
+from stock_list import search_stocks, STOCKS
+
+_TICKER_NAME = {s["ticker"]: s["name"] for s in STOCKS}
 
 app = FastAPI()
 
@@ -87,6 +89,7 @@ def analyze_ticker(ticker: str):
         return {"error": str(e), "detail": traceback.format_exc()}
     return {
         "ticker": ticker,
+        "name": _TICKER_NAME.get(ticker, ticker),
         "current": current,
         "verdict": result["verdict"],
         "total_score": result["total_score"],

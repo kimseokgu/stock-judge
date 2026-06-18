@@ -43,17 +43,32 @@ def get_current_price(ticker: str) -> dict:
             "volume": int(output["acml_vol"]),
         }
     else:
-        url = f"{BASE_URL}/uapi/overseas-price/v1/quotations/price"
-        params = {"AUTH": "", "EXCD": _get_exchange_code(ticker), "SYMB": ticker}
-        headers = {**auth_headers(), "tr_id": "HHDFS00000300"}
-        resp = httpx.get(url, headers=headers, params=params, timeout=10)
-        resp.raise_for_status()
-        output = resp.json()["output"]
+        try:
+            url = f"{BASE_URL}/uapi/overseas-price/v1/quotations/price"
+            params = {"AUTH": "", "EXCD": _get_exchange_code(ticker), "SYMB": ticker}
+            headers = {**auth_headers(), "tr_id": "HHDFS00000300"}
+            resp = httpx.get(url, headers=headers, params=params, timeout=10)
+            resp.raise_for_status()
+            output = resp.json()["output"]
+            last = float(output.get("last", 0))
+            if last > 0:
+                rate = get_usd_krw()
+                return {
+                    "price": round(last * rate),
+                    "change_rate": float(output.get("rate", 0)),
+                    "volume": int(output.get("tvol", 0)),
+                }
+        except Exception:
+            pass
+        # yfinance 폴백 (KIS 해외 API 실패 시)
+        import yfinance as yf
+        info = yf.Ticker(ticker).fast_info
         rate = get_usd_krw()
+        price = getattr(info, "last_price", None) or getattr(info, "previous_close", 0)
         return {
-            "price": round(float(output["last"]) * rate),
-            "change_rate": float(output["rate"]),
-            "volume": int(output["tvol"]),
+            "price": round(float(price) * rate),
+            "change_rate": 0.0,
+            "volume": getattr(info, "three_month_average_volume", 0) or 0,
         }
 
 
