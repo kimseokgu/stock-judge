@@ -625,13 +625,26 @@ function indRows(ind) {
 }
 
 function finRows(fin) {
+  const w52 = fin.week52_position != null ? Math.round(fin.week52_position * 100) + '%' : '-';
   return `
-    <div class="ind-row"><div class="ind-left">${bdg(fin.per,v=>v<=15,v=>v>30)}<span>PER</span></div><span class="ind-val">${fmt(fin.per)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.pbr,v=>v<=1,v=>v>3)}<span>PBR</span></div><span class="ind-val">${fmt(fin.pbr)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.revenue_growth,v=>v>=5,v=>v<0)}<span>매출성장률</span></div><span class="ind-val">${pct(fin.revenue_growth)}</span></div>
+    <div style="font-size:0.72rem;color:#8b95a1;font-weight:600;padding:4px 0 2px;letter-spacing:0.04em">밸류에이션</div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.per,v=>v>0&&v<=15,v=>v>30)}<span>PER</span></div><span class="ind-val">${fmt(fin.per)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.ev_ebitda,v=>v>0&&v<=10,v=>v>20)}<span>EV/EBITDA</span></div><span class="ind-val">${fmt(fin.ev_ebitda)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.pbr,v=>v>0&&v<=1,v=>v>4)}<span>PBR</span></div><span class="ind-val">${fmt(fin.pbr)}</span></div>
+    <div style="font-size:0.72rem;color:#8b95a1;font-weight:600;padding:6px 0 2px;letter-spacing:0.04em">수익성</div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.roe,v=>v>=15,v=>v<0)}<span>ROE</span></div><span class="ind-val">${pct(fin.roe)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.roa,v=>v>=5,v=>v<0)}<span>ROA</span></div><span class="ind-val">${pct(fin.roa)}</span></div>
     <div class="ind-row"><div class="ind-left">${bdg(fin.operating_margin,v=>v>=10,v=>v<0)}<span>영업이익률</span></div><span class="ind-val">${pct(fin.operating_margin)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.debt_ratio,v=>v<=100,v=>v>200)}<span>부채비율</span></div><span class="ind-val">${pct(fin.debt_ratio)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.dividend_yield,v=>v>=2,()=>false)}<span>배당수익률</span></div><span class="ind-val">${pct(fin.dividend_yield)}</span></div>`;
+    <div class="ind-row"><div class="ind-left">${bdg(fin.gross_margin,v=>v>=30,v=>v<10)}<span>매출총이익률</span></div><span class="ind-val">${pct(fin.gross_margin)}</span></div>
+    <div style="font-size:0.72rem;color:#8b95a1;font-weight:600;padding:6px 0 2px;letter-spacing:0.04em">성장성</div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.revenue_growth,v=>v>=10,v=>v<-5)}<span>매출 성장률</span></div><span class="ind-val">${pct(fin.revenue_growth)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.eps_growth,v=>v>=10,v=>v<-10)}<span>EPS 성장률</span></div><span class="ind-val">${pct(fin.eps_growth)}</span></div>
+    <div style="font-size:0.72rem;color:#8b95a1;font-weight:600;padding:6px 0 2px;letter-spacing:0.04em">재무 건전성</div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.fcf_yield,v=>v>=3,v=>v<0)}<span>FCF 수익률</span></div><span class="ind-val">${pct(fin.fcf_yield)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.current_ratio,v=>v>=1.5,v=>v<1)}<span>유동비율</span></div><span class="ind-val">${fmt(fin.current_ratio)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.debt_ratio,v=>v<=100,v=>v>300)}<span>부채비율</span></div><span class="ind-val">${pct(fin.debt_ratio)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.dividend_yield,v=>v>=2,()=>false)}<span>배당수익률</span></div><span class="ind-val">${pct(fin.dividend_yield)}</span></div>
+    <div class="ind-row"><div class="ind-left"><span style="width:52px"></span><span>52주 위치</span></div><span class="ind-val">${w52}</span></div>`;
 }
 
 /* ── 실시간 WebSocket + 30초 폴링 ── */
