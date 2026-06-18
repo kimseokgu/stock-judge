@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>주식 판단기</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+       background: #f2f4f6; color: #191f28; min-height: 100vh; }
+
+/* ═══════════════════════════════════
+   공통
+═══════════════════════════════════ */
+.up   { color: #f04452; }
+.down { color: #3182f6; }
+.flat { color: #8b95a1; }
+
+.badge { font-size: 0.72rem; padding: 3px 8px; border-radius: 6px; font-weight: 600; }
+.badge-buy     { background: #fff0f1; color: #f04452; }
+.badge-sell    { background: #f0f4ff; color: #3182f6; }
+.badge-neutral { background: #f2f4f6; color: #8b95a1; }
+
+/* ═══════════════════════════════════
+   PC 레이아웃  (≥ 768px)
+═══════════════════════════════════ */
+@media (min-width: 768px) {
+  body { display: flex; height: 100vh; overflow: hidden; background: #f2f4f6; }
+
+  /* 사이드바 */
+  .sidebar {
+    width: 260px; min-width: 260px; background: #fff;
+    border-right: 1px solid #e5e8eb; display: flex; flex-direction: column;
+    height: 100vh; overflow: hidden;
+  }
+  .sidebar-header { padding: 20px 20px 12px; border-bottom: 1px solid #f2f4f6; }
+  .sidebar-title { font-size: 1rem; font-weight: 800; margin-bottom: 12px; }
+  .sidebar-search { display: flex; align-items: center; gap: 8px;
+                    background: #f2f4f6; border-radius: 10px; padding: 8px 12px; }
+  .sidebar-search input { border: none; background: transparent; flex: 1;
+                          font-size: 0.9rem; outline: none; color: #191f28; }
+  .sidebar-search input::placeholder { color: #8b95a1; }
+
+  .stock-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .stock-list-item { display: flex; justify-content: space-between; align-items: center;
+                     padding: 12px 20px; cursor: pointer; transition: background 0.1s; }
+  .stock-list-item:hover { background: #f8f9fa; }
+  .stock-list-item.active { background: #f0f6ff; }
+  .sli-left { display: flex; flex-direction: column; gap: 3px; }
+  .sli-ticker { font-size: 0.95rem; font-weight: 600; }
+  .sli-name   { font-size: 0.78rem; color: #8b95a1; }
+  .sli-delete { background: none; border: none; color: #c4c9d1; cursor: pointer;
+                font-size: 0.85rem; padding: 4px; border-radius: 4px; }
+  .sli-delete:hover { color: #f04452; background: #fff0f1; }
+
+  .sidebar-add { padding: 12px 20px; border-top: 1px solid #f2f4f6; }
+  .sidebar-add-btn { width: 100%; padding: 10px; border-radius: 10px;
+                     background: #f2f4f6; border: none; cursor: pointer;
+                     font-size: 0.9rem; color: #3182f6; font-weight: 600; }
+  .sidebar-add-btn:hover { background: #e8f0fe; }
+
+  .sidebar-suggestions { background: #fff; border: 1px solid #e5e8eb; border-radius: 10px;
+                         margin: 0 12px 8px; overflow: hidden; max-height: 300px; overflow-y: auto; }
+  .sug-item { padding: 10px 14px; cursor: pointer; display: flex;
+              justify-content: space-between; font-size: 0.88rem; border-bottom: 1px solid #f2f4f6; }
+  .sug-item:last-child { border-bottom: none; }
+  .sug-item:hover { background: #f8f9fa; }
+  .sug-ticker { color: #8b95a1; font-size: 0.82rem; }
+
+  /* 모바일 전용 숨김 */
+  .mobile-header, .mobile-search-overlay, .mobile-tab-bar,
+  .mobile-content { display: none !important; }
+
+  /* 메인 컨텐츠 영역 */
+  .main { flex: 1; overflow-y: auto; padding: 24px; min-width: 0; }
+
+  .pc-empty { display: flex; flex-direction: column; align-items: center;
+              justify-content: center; height: 100%; color: #8b95a1; }
+  .pc-empty-icon { font-size: 3rem; margin-bottom: 12px; }
+
+  /* PC 컨텐츠 그리드 */
+  .pc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pc-grid .full-width { grid-column: 1 / -1; }
+
+  .card { background: #fff; border-radius: 16px; padding: 20px; }
+
+  /* 가격 카드 */
+  .price-card { background: #fff; border-radius: 16px; padding: 24px; }
+  .price-card .stock-label { font-size: 0.85rem; color: #8b95a1; margin-bottom: 8px; }
+  .price-card .price-big { font-size: 2.2rem; font-weight: 800; letter-spacing: -1px; }
+  .price-card .price-chg { font-size: 0.9rem; margin-top: 6px; }
+
+  /* 판정 카드 */
+  .verdict-card { background: #fff; border-radius: 16px; padding: 24px;
+                  display: flex; flex-direction: column; justify-content: center; }
+  .card-label { font-size: 0.78rem; color: #8b95a1; font-weight: 500; margin-bottom: 12px; }
+  .verdict-badge { display: inline-flex; align-items: center; gap: 8px;
+                   padding: 12px 20px; border-radius: 12px; font-size: 1.2rem; font-weight: 700; }
+  .verdict-buy  { background: #fff0f1; color: #f04452; }
+  .verdict-hold { background: #fffbf0; color: #f5a623; }
+  .verdict-sell { background: #f0f4ff; color: #3182f6; }
+
+  /* 점수 카드 */
+  .score-card { background: #fff; border-radius: 16px; padding: 20px; }
+  .score-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .score-num { font-size: 1.8rem; font-weight: 800; }
+  .progress-wrap { background: #f2f4f6; border-radius: 6px; height: 6px; margin-bottom: 12px; }
+  .progress-fill { height: 6px; border-radius: 6px; background: #3182f6; transition: width 0.5s; }
+  .score-sub { display: flex; justify-content: space-between; font-size: 0.82rem; color: #8b95a1; }
+
+  /* 지표 카드 */
+  .ind-card { background: #fff; border-radius: 16px; padding: 20px; }
+  .ind-card-title { font-size: 0.78rem; color: #8b95a1; font-weight: 500; margin-bottom: 14px; }
+  .ind-row { display: flex; justify-content: space-between; align-items: center;
+             padding: 10px 0; border-bottom: 1px solid #f2f4f6; }
+  .ind-row:last-child { border-bottom: none; }
+  .ind-left { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; }
+  .ind-val  { font-size: 0.88rem; font-weight: 500; }
+}
+
+/* ═══════════════════════════════════
+   모바일 레이아웃  (< 768px)
+═══════════════════════════════════ */
+@media (max-width: 767px) {
+  .sidebar, .main, .pc-grid, .pc-empty { display: none !important; }
+
+  /* 상단 헤더 */
+  .mobile-header { background: #fff; position: sticky; top: 0; z-index: 100;
+                   border-bottom: 1px solid #f2f4f6; }
+  .mobile-header-top { display: flex; align-items: center; justify-content: space-between;
+                       padding: 14px 20px 0; }
+  .mobile-title { font-size: 1rem; font-weight: 800; }
+  .mobile-add-btn { width: 32px; height: 32px; border-radius: 50%; background: #f2f4f6;
+                    border: none; cursor: pointer; font-size: 1rem;
+                    display: flex; align-items: center; justify-content: center; }
+
+  /* 탭 */
+  .mobile-tab-bar { display: flex; gap: 0; overflow-x: auto; padding: 8px 16px 0;
+                    scrollbar-width: none; }
+  .mobile-tab-bar::-webkit-scrollbar { display: none; }
+  .mtab { padding: 8px 14px; font-size: 0.88rem; font-weight: 500; color: #8b95a1;
+          border: none; background: transparent; cursor: pointer; white-space: nowrap;
+          border-bottom: 2px solid transparent; }
+  .mtab.active { color: #191f28; font-weight: 700; border-bottom: 2px solid #3182f6; }
+  .mtab-x { font-size: 0.65rem; color: #c4c9d1; margin-left: 3px; }
+
+  /* 검색 오버레이 */
+  .mobile-search-overlay { display: none; position: fixed; inset: 0;
+                           background: #fff; z-index: 200; flex-direction: column; }
+  .mobile-search-overlay.visible { display: flex; }
+  .mso-header { display: flex; align-items: center; gap: 12px; padding: 14px 20px;
+                border-bottom: 1px solid #f2f4f6; }
+  .mso-header input { flex: 1; border: none; font-size: 1rem; outline: none; }
+  .mso-header input::placeholder { color: #8b95a1; }
+  .mso-cancel { color: #3182f6; font-size: 0.9rem; cursor: pointer; }
+  .mso-list { flex: 1; overflow-y: auto; }
+  .mso-item { display: flex; justify-content: space-between; align-items: center;
+              padding: 15px 20px; border-bottom: 1px solid #f2f4f6; cursor: pointer; }
+  .mso-item:active { background: #f8f9fa; }
+  .mso-name { font-size: 0.93rem; font-weight: 500; }
+  .mso-ticker { font-size: 0.82rem; color: #8b95a1; }
+
+  /* 모바일 컨텐츠 */
+  .mobile-content { padding-bottom: 40px; }
+
+  .m-section { background: #fff; margin-bottom: 8px; padding: 20px; }
+  .m-label { font-size: 0.75rem; color: #8b95a1; font-weight: 500; margin-bottom: 10px; }
+
+  .m-price-main { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; }
+  .m-price-chg  { font-size: 0.88rem; margin-top: 4px; }
+
+  .verdict-badge { display: inline-flex; align-items: center; gap: 8px;
+                   padding: 10px 18px; border-radius: 12px; font-size: 1.05rem; font-weight: 700; }
+  .verdict-buy  { background: #fff0f1; color: #f04452; }
+  .verdict-hold { background: #fffbf0; color: #f5a623; }
+  .verdict-sell { background: #f0f4ff; color: #3182f6; }
+
+  .progress-wrap { background: #f2f4f6; border-radius: 6px; height: 6px; margin: 10px 0 12px; }
+  .progress-fill { height: 6px; border-radius: 6px; background: #3182f6; transition: width 0.5s; }
+  .score-sub { display: flex; justify-content: space-between; font-size: 0.82rem; color: #8b95a1; }
+
+  .ind-row { display: flex; justify-content: space-between; align-items: center;
+             padding: 12px 0; border-bottom: 1px solid #f2f4f6; }
+  .ind-row:last-child { border-bottom: none; }
+  .ind-left { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+  .ind-val  { font-size: 0.9rem; font-weight: 500; }
+}
+
+.state-box { background: #fff; padding: 48px 20px; text-align: center;
+             color: #8b95a1; font-size: 0.9rem; border-radius: 16px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ PC: 사이드바 ══════════════ -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-title">📈 주식 판단기</div>
+    <div class="sidebar-search">
+      <span style="color:#8b95a1">🔍</span>
+      <input id="pcSearchInput" placeholder="종목명 또는 티커" autocomplete="off" />
+    </div>
+  </div>
+  <div class="sidebar-suggestions" id="pcSuggestions" style="display:none"></div>
+  <div class="stock-list" id="pcStockList"></div>
+  <div class="sidebar-add">
+    <button class="sidebar-add-btn" onclick="document.getElementById('pcSearchInput').focus()">
+      + 종목 추가
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════ PC: 메인 ══════════════ -->
+<div class="main" id="pcMain">
+  <div class="pc-empty" id="pcEmpty">
+    <div class="pc-empty-icon">🔍</div>
+    <div>왼쪽에서 종목을 검색해 추가하세요</div>
+  </div>
+  <div id="pcContent" style="display:none"></div>
+</div>
+
+<!-- ══════════════ 모바일: 헤더 ══════════════ -->
+<div class="mobile-header">
+  <div class="mobile-header-top">
+    <span class="mobile-title">📈 주식 판단기</span>
+    <button class="mobile-add-btn" onclick="openMobileSearch()">＋</button>
+  </div>
+  <div class="mobile-tab-bar" id="mobileTabs"></div>
+</div>
+
+<!-- 모바일 검색 오버레이 -->
+<div class="mobile-search-overlay" id="mobileSearchOverlay">
+  <div class="mso-header">
+    <input id="mobileSearchInput" placeholder="종목명 또는 티커 검색" autocomplete="off" />
+    <span class="mso-cancel" onclick="closeMobileSearch()">취소</span>
+  </div>
+  <div class="mso-list" id="msoList"></div>
+</div>
+
+<!-- 모바일 컨텐츠 -->
+<div class="mobile-content" id="mobileContent">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+              height:60vh;color:#8b95a1;">
+    <div style="font-size:2.5rem;margin-bottom:12px">🔍</div>
+    <div style="font-size:0.93rem">＋ 버튼으로 종목을 추가해보세요</div>
+  </div>
+</div>
+
+<script>
+const API = "";  // 같은 서버에서 서빙되므로 상대 경로
+let ws = null;
+let stocks = [];
+let selected = null;
+let searchTimer = null;
+const isMobile = () => window.innerWidth < 768;
+
+/* ── 종목 리스트 서버 동기화 ── */
+async function loadWatchlist() {
+  try {
+    const r = await fetch(`${API}/watchlist`);
+    stocks = await r.json();
+  } catch { stocks = []; }
+  renderAll();
+  if (stocks.length > 0) selectStock(stocks[0]);
+}
+
+async function serverAdd(ticker) {
+  await fetch(`${API}/watchlist/${ticker}`, { method: "POST" });
+  stocks = await (await fetch(`${API}/watchlist`)).json();
+}
+
+async function serverDelete(ticker) {
+  await fetch(`${API}/watchlist/${ticker}`, { method: "DELETE" });
+  stocks = await (await fetch(`${API}/watchlist`)).json();
+}
+
+/* ── 렌더링 ── */
+function renderAll() {
+  renderPcSidebar();
+  renderMobileTabs();
+}
+
+function renderPcSidebar() {
+  const el = document.getElementById("pcStockList");
+  if (!el) return;
+  el.innerHTML = stocks.map(s => `
+    <div class="stock-list-item ${s===selected?'active':''}" onclick="selectStock('${s}')">
+      <div class="sli-left">
+        <span class="sli-ticker">${s}</span>
+      </div>
+      <button class="sli-delete" onclick="deleteStock(event,'${s}')">✕</button>
+    </div>`).join("");
+}
+
+function renderMobileTabs() {
+  const el = document.getElementById("mobileTabs");
+  if (!el) return;
+  el.innerHTML = stocks.map(s => `
+    <button class="mtab ${s===selected?'active':''}" onclick="selectStock('${s}')">
+      ${s}<span class="mtab-x" onclick="deleteStock(event,'${s}')">✕</span>
+    </button>`).join("");
+}
+
+/* ── 검색 ── */
+let searchDebounce = null;
+
+function setupSearch(inputId, suggestionsId, onSelect) {
+  const input = document.getElementById(inputId);
+  const sug   = document.getElementById(suggestionsId);
+  if (!input) return;
+
+  input.addEventListener("input", async () => {
+    clearTimeout(searchDebounce);
+    const q = input.value.trim();
+    if (!q) { sug.style.display = "none"; return; }
+    searchDebounce = setTimeout(async () => {
+      try {
+        const r = await fetch(`${API}/search?q=${encodeURIComponent(q)}`);
+        const items = await r.json();
+        if (!items.length) { sug.style.display = "none"; return; }
+        sug.style.display = "block";
+        sug.innerHTML = items.map(s =>
+          `<div class="${suggestionsId==='pcSuggestions'?'sug-item':'mso-item'}"
+               onclick="onSelectProxy('${s.ticker}','${s.name}','${suggestionsId}','${inputId}')">
+            <span class="${suggestionsId==='pcSuggestions'?'':'mso-name'}">${s.name}</span>
+            <span class="${suggestionsId==='pcSuggestions'?'sug-ticker':'mso-ticker'}">${s.ticker}</span>
+          </div>`
+        ).join("");
+      } catch {}
+    }, 200);
+  });
+}
+
+window.onSelectProxy = async function(ticker, name, sugId, inputId) {
+  document.getElementById(sugId).style.display = "none";
+  document.getElementById(inputId).value = "";
+  if (sugId === "msoList") closeMobileSearch();
+  if (!stocks.includes(ticker)) {
+    await serverAdd(ticker);
+  }
+  renderAll();
+  selectStock(ticker);
+};
+
+// PC 검색 설정
+setupSearch("pcSearchInput", "pcSuggestions");
+
+// 모바일 검색
+function openMobileSearch() {
+  document.getElementById("mobileSearchOverlay").classList.add("visible");
+  setTimeout(() => document.getElementById("mobileSearchInput").focus(), 100);
+}
+function closeMobileSearch() {
+  document.getElementById("mobileSearchOverlay").classList.remove("visible");
+  document.getElementById("mobileSearchInput").value = "";
+  document.getElementById("msoList").innerHTML = "";
+}
+setupSearch("mobileSearchInput", "msoList");
+
+/* ── 삭제 ── */
+async function deleteStock(e, ticker) {
+  e.stopPropagation();
+  await serverDelete(ticker);
+  if (selected === ticker) {
+    selected = null;
+    showEmpty();
+  }
+  renderAll();
+}
+
+function showEmpty() {
+  document.getElementById("pcEmpty").style.display = "flex";
+  document.getElementById("pcContent").style.display = "none";
+  document.getElementById("mobileContent").innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                height:60vh;color:#8b95a1;">
+      <div style="font-size:2.5rem;margin-bottom:12px">🔍</div>
+      <div style="font-size:0.93rem">종목을 선택해주세요</div>
+    </div>`;
+}
+
+/* ── 종목 선택 & 분석 ── */
+async function selectStock(ticker) {
+  selected = ticker;
+  renderAll();
+  if (ws) { ws.close(); ws = null; }
+
+  document.getElementById("pcEmpty").style.display = "none";
+  document.getElementById("pcContent").style.display = "block";
+  document.getElementById("pcContent").innerHTML = `<div class="state-box">분석 중...</div>`;
+  document.getElementById("mobileContent").innerHTML = `<div style="padding:48px;text-align:center;color:#8b95a1">분석 중...</div>`;
+
+  try {
+    const r = await fetch(`${API}/analyze/${ticker}`);
+    if (!r.ok) throw new Error(r.status);
+    const data = await r.json();
+    renderPC(data);
+    renderMobile(data);
+    connectWS(ticker);
+  } catch(e) {
+    const msg = `<div class="state-box">오류가 발생했어요<br><small style="color:#8b95a1">${e.message}</small></div>`;
+    document.getElementById("pcContent").innerHTML = msg;
+    document.getElementById("mobileContent").innerHTML = msg;
+  }
+}
+
+/* ── 공통 데이터 ── */
+function makeData(data) {
+  const c = data.current;
+  const ind = data.indicators;
+  const fin = data.financials;
+  const cr = c.change_rate;
+  const cls = cr > 0 ? "up" : cr < 0 ? "down" : "flat";
+  const sgn = cr > 0 ? "▲" : cr < 0 ? "▼" : "-";
+  const vm = { buy: ["매수 추천","verdict-buy","🔴"], hold: ["보류","verdict-hold","🟡"], sell: ["매도","verdict-sell","🔵"] };
+  const [vt, vc, ve] = vm[data.verdict] || ["?","",""];
+  return { c, ind, fin, cr, cls, sgn, vt, vc, ve };
+}
+
+function bdg(val, gFn, bFn) {
+  if (val == null) return `<span class="badge badge-neutral">-</span>`;
+  if (gFn(val))   return `<span class="badge badge-buy">매수</span>`;
+  if (bFn(val))   return `<span class="badge badge-sell">매도</span>`;
+  return `<span class="badge badge-neutral">중립</span>`;
+}
+const fmt = v => v != null ? v : '-';
+const pct = v => v != null ? v + '%' : '-';
+function maLabel(ind) {
+  if (!ind.ma5 || !ind.ma20) return '-';
+  if (ind.ma60) {
+    if (ind.ma5 > ind.ma20 && ind.ma20 > ind.ma60) return '정배열';
+    if (ind.ma5 < ind.ma20 && ind.ma20 < ind.ma60) return '역배열';
+    return '혼조';
+  }
+  return ind.ma5 > ind.ma20 ? '단기상승' : '단기하락';
+}
+
+/* ── 차트 ── */
+let chartData = [];
+let chartPeriod = "3m";
+let livePrice = null;
+
+async function loadChart(ticker, period) {
+  chartPeriod = period;
+  try {
+    const r = await fetch(`${API}/chart/${ticker}?period=${period}`);
+    chartData = await r.json();
+    if (livePrice) {
+      const last = chartData[chartData.length - 1];
+      if (last) last.close = livePrice;
+    }
+    drawChart(ticker);
+  } catch {}
+}
+
+function drawChart(ticker) {
+  const canvas = document.getElementById("priceChart");
+  if (!canvas || !chartData.length) return;
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  const PAD = { top: 20, bottom: 36, left: 48, right: 16 };
+  const prices = chartData.map(d => d.close);
+  const minP = Math.min(...prices), maxP = Math.max(...prices);
+  const range = maxP - minP || 1;
+  const isUp = prices[prices.length - 1] >= prices[0];
+  const color = isUp ? "#f04452" : "#3182f6";
+
+  const xOf = i => PAD.left + (i / (prices.length - 1)) * (W - PAD.left - PAD.right);
+  const yOf = p => PAD.top + (1 - (p - minP) / range) * (H - PAD.top - PAD.bottom);
+
+  ctx.clearRect(0, 0, W, H);
+
+  // 그라데이션 fill
+  ctx.beginPath();
+  ctx.moveTo(xOf(0), yOf(prices[0]));
+  for (let i = 1; i < prices.length; i++) ctx.lineTo(xOf(i), yOf(prices[i]));
+  ctx.lineTo(xOf(prices.length - 1), H - PAD.bottom);
+  ctx.lineTo(xOf(0), H - PAD.bottom);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, PAD.top, 0, H - PAD.bottom);
+  grad.addColorStop(0, isUp ? "rgba(240,68,82,0.15)" : "rgba(49,130,246,0.15)");
+  grad.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // 라인
+  ctx.beginPath();
+  ctx.moveTo(xOf(0), yOf(prices[0]));
+  for (let i = 1; i < prices.length; i++) ctx.lineTo(xOf(i), yOf(prices[i]));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.stroke();
+
+  // 최고/최저 레이블
+  const hiIdx = prices.indexOf(maxP), loIdx = prices.indexOf(minP);
+  ctx.font = "11px -apple-system, sans-serif";
+  ctx.fillStyle = "#8b95a1";
+  ctx.textAlign = "right";
+  ctx.fillText("최고 " + Number(maxP).toLocaleString(), xOf(hiIdx) - 6, yOf(maxP) + 4);
+  ctx.fillText("최저 " + Number(minP).toLocaleString(), xOf(loIdx) - 6, yOf(minP) + 4);
+
+  // 최고/최저 점
+  [hiIdx, loIdx].forEach((idx, i) => {
+    ctx.beginPath();
+    ctx.arc(xOf(idx), yOf(prices[idx]), 3, 0, Math.PI * 2);
+    ctx.fillStyle = "#8b95a1";
+    ctx.fill();
+  });
+
+  // 현재 가격 점 (마지막)
+  const lastX = xOf(prices.length - 1), lastY = yOf(prices[prices.length - 1]);
+  ctx.beginPath();
+  ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function chartHTML(ticker, cls) {
+  return `
+  <canvas id="priceChart" width="800" height="220"
+    style="width:100%;height:220px;display:block"></canvas>
+  <div style="display:flex;gap:4px;justify-content:center;margin-top:12px">
+    ${["1w","1m","3m","1y"].map(p => `
+      <button onclick="loadChart('${ticker}','${p}')" id="cBtn_${p}"
+        style="padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.83rem;font-weight:600;
+               background:${p===chartPeriod?'#191f28':'#f2f4f6'};color:${p===chartPeriod?'#fff':'#8b95a1'}">
+        ${{'"1w"':'1주','"1m"':'1달','"3m"':'3달','"1y"':'1년'}['"'+p+'"']}
+      </button>`).join("")}
+  </div>`;
+}
+
+/* ── PC 렌더링 ── */
+function renderPC(data) {
+  const { c, ind, fin, cls, sgn, cr, vt, vc, ve } = makeData(data);
+  livePrice = c.price;
+  document.getElementById("pcContent").innerHTML = `
+  <div class="pc-grid">
+    <div class="price-card full-width">
+      <div class="stock-label">${data.ticker}</div>
+      <div class="price-big ${cls}" id="pcLivePrice">${Number(c.price).toLocaleString()}</div>
+      <div class="price-chg ${cls}">${sgn} ${Math.abs(cr)}%</div>
+      <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
+    </div>
+
+    <div class="verdict-card">
+      <div class="card-label">AI 판정</div>
+      <div class="verdict-badge ${vc}">${ve} ${vt}</div>
+    </div>
+
+    <div class="score-card">
+      <div class="card-label">종합 점수</div>
+      <div class="score-top">
+        <span style="font-size:0.9rem;color:#8b95a1">총점</span>
+        <span class="score-num">${data.total_score}<span style="font-size:0.85rem;color:#8b95a1;font-weight:400"> / 100</span></span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${data.total_score}%"></div></div>
+      <div class="score-sub"><span>기술적 ${data.technical_score}/60</span><span>재무 ${data.financial_score}/40</span></div>
+    </div>
+
+    <div class="ind-card">
+      <div class="ind-card-title">기술적 지표</div>
+      ${indRows(ind)}
+    </div>
+
+    <div class="ind-card">
+      <div class="ind-card-title">재무 지표</div>
+      ${finRows(fin)}
+    </div>
+  </div>`;
+  loadChart(data.ticker, chartPeriod);
+}
+
+/* ── 모바일 렌더링 ── */
+function renderMobile(data) {
+  const { c, ind, fin, cls, sgn, cr, vt, vc, ve } = makeData(data);
+  document.getElementById("mobileContent").innerHTML = `
+    <div class="m-section">
+      <div class="m-label">${data.ticker}</div>
+      <div class="m-price-main ${cls}" id="mobileLivePrice">${Number(c.price).toLocaleString()}</div>
+      <div class="m-price-chg ${cls}">${sgn} ${Math.abs(cr)}%</div>
+      <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
+    </div>
+
+    <div class="m-section">
+      <div class="m-label">AI 판정</div>
+      <div class="verdict-badge ${vc}">${ve} ${vt}</div>
+    </div>
+
+    <div class="m-section">
+      <div class="m-label">종합 점수</div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline">
+        <span style="font-size:0.9rem">총점</span>
+        <span style="font-size:1.6rem;font-weight:800">${data.total_score}<span style="font-size:0.85rem;color:#8b95a1;font-weight:400"> / 100</span></span>
+      </div>
+      <div class="progress-wrap"><div class="progress-fill" style="width:${data.total_score}%"></div></div>
+      <div class="score-sub"><span>기술적 ${data.technical_score}/60</span><span>재무 ${data.financial_score}/40</span></div>
+    </div>
+
+    <div class="m-section">
+      <div class="m-label">기술적 지표</div>
+      ${indRows(ind)}
+    </div>
+
+    <div class="m-section">
+      <div class="m-label">재무 지표</div>
+      ${finRows(fin)}
+    </div>`;
+}
+
+function indRows(ind) {
+  const maGood = ind.ma5 && ind.ma20 && ind.ma5 > ind.ma20;
+  return `
+    <div class="ind-row"><div class="ind-left">${bdg(maGood,v=>v,()=>false)}<span>이동평균 (5/20/60)</span></div><span class="ind-val">${maLabel(ind)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(ind.rsi,v=>v>=30&&v<=50,v=>v>=70)}<span>RSI</span></div><span class="ind-val">${fmt(ind.rsi)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(ind.macd_cross,v=>v==='golden',v=>v==='dead')}<span>MACD</span></div><span class="ind-val">${ind.macd_cross==='golden'?'골든크로스':ind.macd_cross==='dead'?'데드크로스':'중립'}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(ind.bb_position,v=>v<=0.2,v=>v>=0.8)}<span>볼린저밴드</span></div><span class="ind-val">${fmt(ind.bb_position)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(ind.volume_ratio,v=>v>=1.5,v=>v<0.7)}<span>거래량 비율</span></div><span class="ind-val">${fmt(ind.volume_ratio)}x</span></div>`;
+}
+
+function finRows(fin) {
+  return `
+    <div class="ind-row"><div class="ind-left">${bdg(fin.per,v=>v<=15,v=>v>30)}<span>PER</span></div><span class="ind-val">${fmt(fin.per)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.pbr,v=>v<=1,v=>v>3)}<span>PBR</span></div><span class="ind-val">${fmt(fin.pbr)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.revenue_growth,v=>v>=5,v=>v<0)}<span>매출성장률</span></div><span class="ind-val">${pct(fin.revenue_growth)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.operating_margin,v=>v>=10,v=>v<0)}<span>영업이익률</span></div><span class="ind-val">${pct(fin.operating_margin)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.debt_ratio,v=>v<=100,v=>v>200)}<span>부채비율</span></div><span class="ind-val">${pct(fin.debt_ratio)}</span></div>
+    <div class="ind-row"><div class="ind-left">${bdg(fin.dividend_yield,v=>v>=2,()=>false)}<span>배당수익률</span></div><span class="ind-val">${pct(fin.dividend_yield)}</span></div>`;
+}
+
+/* ── 실시간 WebSocket ── */
+function connectWS(ticker) {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/${ticker}`);
+  ws.onmessage = e => {
+    const d = JSON.parse(e.data);
+    if (!d.price) return;
+    livePrice = d.price;
+    const v = Number(d.price).toLocaleString();
+    const p = document.getElementById("pcLivePrice");
+    const m = document.getElementById("mobileLivePrice");
+    if (p) p.textContent = v;
+    if (m) m.textContent = v;
+    // 차트 마지막 포인트 실시간 업데이트
+    if (chartData.length) {
+      chartData[chartData.length - 1].close = d.price;
+      drawChart(ticker);
+    }
+  };
+  ws.onerror = () => {};
+}
+
+/* ── 시작 ── */
+loadWatchlist();
+</script>
+</body>
+</html>

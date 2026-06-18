@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+websockets
+httpx
+pandas
+ta
+yfinance
+python-dotenv
+pytest
+pytest-asyncio
