@@ -103,7 +103,7 @@ async def ws_price(websocket: WebSocket, ticker: str):
 
 
 # ── 프론트엔드 서빙 (마지막에 선언) ──────────────
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
+FRONTEND_DIR = Path(__file__).parent / "frontend"
 app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 
