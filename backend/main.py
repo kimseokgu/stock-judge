@@ -76,11 +76,15 @@ def chart_data(ticker: str, period: str = "3m"):
 
 @app.get("/analyze/{ticker}")
 def analyze_ticker(ticker: str):
-    df = get_daily_ohlcv(ticker)
-    ind = calculate_indicators(df)
-    fin = get_financials(ticker)
-    result = analyze(ind, fin)
-    current = get_current_price(ticker)
+    import traceback
+    try:
+        df = get_daily_ohlcv(ticker)
+        ind = calculate_indicators(df)
+        fin = get_financials(ticker)
+        result = analyze(ind, fin)
+        current = get_current_price(ticker)
+    except Exception as e:
+        return {"error": str(e), "detail": traceback.format_exc()}
     return {
         "ticker": ticker,
         "current": current,
