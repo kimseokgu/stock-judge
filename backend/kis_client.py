@@ -13,7 +13,12 @@ def get_usd_krw() -> float:
     df = yf.download("USDKRW=X", period="1d", interval="1d", progress=False, auto_adjust=True)
     if df.empty:
         return 1350.0
-    return float(df["Close"].iloc[-1])
+    close = df["Close"]
+    if isinstance(close, pd.DataFrame):
+        val = close.iloc[-1, 0]
+    else:
+        val = close.iloc[-1]
+    return float(val)
 
 
 def is_korean(ticker: str) -> bool:
@@ -57,9 +62,15 @@ def get_daily_ohlcv(ticker: str, count: int = 120) -> pd.DataFrame:
     import yfinance as yf
     yf_ticker = _to_yf_ticker(ticker)
     df = yf.download(yf_ticker, period="1y", interval="1d", progress=False, auto_adjust=True)
+    if df.empty:
+        return pd.DataFrame(columns=["date", "open", "high", "low", "close", "volume"])
     df = df.reset_index()
-    df.columns = [c.lower() if isinstance(c, str) else c[0].lower() for c in df.columns]
-    df = df.rename(columns={"date": "date"})
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = [c[0].lower() for c in df.columns]
+    else:
+        df.columns = [c.lower() for c in df.columns]
+    if "datetime" in df.columns:
+        df = df.rename(columns={"datetime": "date"})
     df = df[["date", "open", "high", "low", "close", "volume"]]
     df = df.dropna(subset=["close", "open", "high", "low"]).tail(count).reset_index(drop=True)
     # 미국 주식은 원화로 변환
