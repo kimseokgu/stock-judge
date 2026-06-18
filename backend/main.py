@@ -100,6 +100,14 @@ def analyze_ticker(ticker: str):
     }
 
 
+@app.get("/price/{ticker}")
+def current_price(ticker: str):
+    try:
+        return get_current_price(ticker)
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.websocket("/ws/{ticker}")
 async def ws_price(websocket: WebSocket, ticker: str):
     await websocket.accept()

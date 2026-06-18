@@ -538,7 +538,7 @@ function renderPC(data) {
   <div class="pc-grid">
     <div class="price-card full-width">
       <div class="stock-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
-      <div class="price-big ${cls}" id="pcLivePrice">${Number(c.price).toLocaleString()}</div>
+      <div class="price-big ${cls}" id="pcLivePrice">${Number(c.price).toLocaleString()}원</div>
       <div class="price-chg ${cls}">${sgn} ${Math.abs(cr)}%</div>
       <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
     </div>
@@ -546,6 +546,9 @@ function renderPC(data) {
     <div class="verdict-card">
       <div class="card-label">AI 판정</div>
       <div class="verdict-badge ${vc}">${ve} ${vt}</div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px">
+        ${(data.reasons||[]).map(r=>`<div style="font-size:0.82rem;color:#444;background:#f8f9fa;border-radius:8px;padding:7px 10px;line-height:1.4">• ${r}</div>`).join("")}
+      </div>
     </div>
 
     <div class="score-card">
@@ -577,7 +580,7 @@ function renderMobile(data) {
   document.getElementById("mobileContent").innerHTML = `
     <div class="m-section">
       <div class="m-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
-      <div class="m-price-main ${cls}" id="mobileLivePrice">${Number(c.price).toLocaleString()}</div>
+      <div class="m-price-main ${cls}" id="mobileLivePrice">${Number(c.price).toLocaleString()}원</div>
       <div class="m-price-chg ${cls}">${sgn} ${Math.abs(cr)}%</div>
       <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
     </div>
@@ -585,6 +588,9 @@ function renderMobile(data) {
     <div class="m-section">
       <div class="m-label">AI 판정</div>
       <div class="verdict-badge ${vc}">${ve} ${vt}</div>
+      <div style="margin-top:14px;display:flex;flex-direction:column;gap:6px">
+        ${(data.reasons||[]).map(r=>`<div style="font-size:0.82rem;color:#444;background:#f8f9fa;border-radius:8px;padding:7px 10px;line-height:1.4">• ${r}</div>`).join("")}
+      </div>
     </div>
 
     <div class="m-section">
@@ -628,26 +634,44 @@ function finRows(fin) {
     <div class="ind-row"><div class="ind-left">${bdg(fin.dividend_yield,v=>v>=2,()=>false)}<span>배당수익률</span></div><span class="ind-val">${pct(fin.dividend_yield)}</span></div>`;
 }
 
-/* ── 실시간 WebSocket ── */
+/* ── 실시간 WebSocket + 30초 폴링 ── */
+let pricePoller = null;
+
+function updatePriceUI(price, ticker) {
+  livePrice = price;
+  const v = Number(price).toLocaleString() + "원";
+  const p = document.getElementById("pcLivePrice");
+  const m = document.getElementById("mobileLivePrice");
+  if (p) p.textContent = v;
+  if (m) m.textContent = v;
+  if (chartData.length) {
+    chartData[chartData.length - 1].close = price;
+    drawChart(ticker);
+  }
+}
+
+function startPricePoller(ticker) {
+  if (pricePoller) clearInterval(pricePoller);
+  pricePoller = setInterval(async () => {
+    try {
+      const r = await fetch(`${API}/price/${ticker}`);
+      const d = await r.json();
+      if (d.price) updatePriceUI(d.price, ticker);
+    } catch {}
+  }, 30000);
+}
+
 function connectWS(ticker) {
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}/ws/${ticker}`);
   ws.onmessage = e => {
     const d = JSON.parse(e.data);
     if (!d.price) return;
-    livePrice = d.price;
-    const v = Number(d.price).toLocaleString();
-    const p = document.getElementById("pcLivePrice");
-    const m = document.getElementById("mobileLivePrice");
-    if (p) p.textContent = v;
-    if (m) m.textContent = v;
-    // 차트 마지막 포인트 실시간 업데이트
-    if (chartData.length) {
-      chartData[chartData.length - 1].close = d.price;
-      drawChart(ticker);
-    }
+    updatePriceUI(d.price, ticker);
   };
   ws.onerror = () => {};
+  ws.onclose = () => {};
+  startPricePoller(ticker);
 }
 
 /* ── 시작 ── */

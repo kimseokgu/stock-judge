@@ -102,6 +102,66 @@ def verdict(total_score: int) -> str:
         return "sell"
 
 
+def reasons(indicators: dict, financials: dict) -> list[str]:
+    out = []
+    ind, fin = indicators, financials
+
+    ma5, ma20, ma60 = ind.get("ma5"), ind.get("ma20"), ind.get("ma60")
+    if ma5 and ma20 and ma60:
+        if ma5 > ma20 > ma60:
+            out.append("이동평균 정배열 — 단기·중기·장기 모두 상승 추세")
+        elif ma5 < ma20 < ma60:
+            out.append("이동평균 역배열 — 하락 추세 진행 중")
+
+    rsi = ind.get("rsi")
+    if rsi is not None:
+        if rsi < 30:
+            out.append(f"RSI {rsi:.0f} — 과매도 구간, 반등 가능성")
+        elif rsi >= 70:
+            out.append(f"RSI {rsi:.0f} — 과매수 구간, 조정 주의")
+        elif 30 <= rsi <= 50:
+            out.append(f"RSI {rsi:.0f} — 저점 매수 구간")
+
+    cross = ind.get("macd_cross")
+    if cross == "golden":
+        out.append("MACD 골든크로스 — 상승 전환 신호")
+    elif cross == "dead":
+        out.append("MACD 데드크로스 — 하락 전환 신호")
+
+    bb = ind.get("bb_position")
+    if bb is not None:
+        if bb <= 0.2:
+            out.append(f"볼린저밴드 하단 근접 (위치 {bb:.2f}) — 반등 구간")
+        elif bb >= 0.8:
+            out.append(f"볼린저밴드 상단 근접 (위치 {bb:.2f}) — 과열 주의")
+
+    per = fin.get("per")
+    if per:
+        if per <= 15:
+            out.append(f"PER {per:.1f} — 저평가 구간")
+        elif per > 30:
+            out.append(f"PER {per:.1f} — 고평가 주의")
+
+    rg = fin.get("revenue_growth")
+    if rg is not None:
+        if rg >= 10:
+            out.append(f"매출 성장률 {rg:.1f}% — 강한 성장세")
+        elif rg < 0:
+            out.append(f"매출 성장률 {rg:.1f}% — 매출 감소 중")
+
+    om = fin.get("operating_margin")
+    if om is not None:
+        if om < 0:
+            out.append(f"영업이익률 {om:.1f}% — 적자 기업")
+        elif om >= 15:
+            out.append(f"영업이익률 {om:.1f}% — 높은 수익성")
+
+    if not out:
+        out.append("특이 신호 없음 — 중립 상태")
+
+    return out
+
+
 def analyze(indicators: dict, financials: dict) -> dict:
     tech_score = score_technical(indicators)
     fin_score = score_financial(financials)
@@ -111,4 +171,5 @@ def analyze(indicators: dict, financials: dict) -> dict:
         "total_score": total,
         "technical_score": tech_score,
         "financial_score": fin_score,
+        "reasons": reasons(indicators, financials),
     }
