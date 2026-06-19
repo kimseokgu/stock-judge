@@ -27,37 +27,95 @@ def _save_cache(cache: dict):
         pass
 
 
-def _yf_session():
-    """브라우저처럼 쿠키를 먼저 획득한 세션 반환 — cloud IP 차단 우회."""
-    import requests
-    s = requests.Session()
-    s.headers.update({
-        "User-Agent": (
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) "
-            "Chrome/125.0.0.0 Safari/537.36"
-        ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-    })
+def _finnhub_us_financials(ticker: str) -> dict:
+    """Finnhub API로 미국 주식 재무지표 조회."""
+    import os
+    api_key = os.getenv("FINNHUB_API_KEY", "")
+    if not api_key:
+        return {}
     try:
-        s.get("https://fc.yahoo.com", timeout=5)
-    except Exception:
-        pass
-    return s
+        resp = httpx.get(
+            "https://finnhub.io/api/v1/stock/metric",
+            params={"symbol": ticker, "metric": "all", "token": api_key},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        m = resp.json().get("metric", {})
+        if not m:
+            return {}
 
+        result = {}
 
-def _yf_info(ticker: str) -> dict:
-    """yfinance .info 호출 — 브라우저 세션으로 rate limit 우회, 최대 2회 재시도."""
-    for attempt in range(3):
+        per = m.get("peBasicExclExtraTTM") or m.get("peNormalizedAnnual")
+        if per and per > 0:
+            result["per"] = round(per, 2)
+
+        pbr = m.get("pbAnnual")
+        if pbr and pbr > 0:
+            result["pbr"] = round(pbr, 2)
+
+        roe = m.get("roeTTM") or m.get("roeAnnual")
+        if roe is not None:
+            result["roe"] = round(roe, 2)
+
+        roa = m.get("roaTTM") or m.get("roaAnnual")
+        if roa is not None:
+            result["roa"] = round(roa, 2)
+
+        rg = m.get("revenueGrowthTTMYoy")
+        if rg is not None:
+            result["revenue_growth"] = round(rg, 2)
+
+        eps_g = m.get("epsGrowthTTMYoy")
+        if eps_g is not None:
+            result["eps_growth"] = round(eps_g, 2)
+
+        om = m.get("operatingMarginAnnual")
+        if om is not None:
+            result["operating_margin"] = round(om, 2)
+
+        gm = m.get("grossMarginAnnual") or m.get("grossMarginTTM")
+        if gm is not None:
+            result["gross_margin"] = round(gm, 2)
+
+        div = m.get("dividendYieldIndicatedAnnual")
+        if div:
+            result["dividend_yield"] = round(div, 2)
+
+        cr = m.get("currentRatioAnnual") or m.get("currentRatioQuarterly")
+        if cr is not None:
+            result["current_ratio"] = round(cr, 2)
+
+        # 부채비율 = 총부채 / 자기자본
+        ltd = m.get("longTermDebt/equityAnnual")
+        if ltd is not None:
+            result["debt_ratio"] = round(ltd, 2)
+
+        ev_eb = m.get("enterpriseValueEbitdaTTM")
+        if ev_eb and ev_eb > 0:
+            result["ev_ebitda"] = round(ev_eb, 2)
+
+        # FCF yield
+        fcf = m.get("freeCashFlowAnnual")
+        mktcap = m.get("marketCapitalization")
+        if fcf is not None and mktcap and mktcap > 0:
+            result["fcf_yield"] = round(fcf / mktcap * 100, 2)
+
+        # 52주 위치
+        hi52 = m.get("52WeekHigh")
+        lo52 = m.get("52WeekLow")
+        # fast_info로 현재가
         try:
-            session = _yf_session()
-            return yf.Ticker(ticker, session=session).info
+            fi = yf.Ticker(ticker).fast_info
+            price = getattr(fi, "last_price", None) or getattr(fi, "previous_close", 0)
+            if hi52 and lo52 and price and hi52 > lo52:
+                result["week52_position"] = round((price - lo52) / (hi52 - lo52), 2)
         except Exception:
-            if attempt < 2:
-                time.sleep(4 + attempt * 3)
-            else:
-                raise
+            pass
+
+        return result
+    except Exception:
+        return {}
 
 
 def get_financials(ticker: str) -> dict:
@@ -176,7 +234,7 @@ def _get_korean_financials(code: str) -> dict:
 
 
 def _get_us_financials(ticker: str) -> dict:
-    result = {
+    _empty = {
         "per": None, "pbr": None, "dividend_yield": None,
         "revenue_growth": None, "operating_margin": None, "gross_margin": None,
         "debt_ratio": None, "current_ratio": None,
@@ -184,6 +242,13 @@ def _get_us_financials(ticker: str) -> dict:
         "fcf_yield": None, "ev_ebitda": None, "week52_position": None,
     }
 
+    # Finnhub 우선 (cloud에서 yfinance .info가 rate limit으로 차단됨)
+    finnhub = _finnhub_us_financials(ticker)
+    if finnhub:
+        return {**_empty, **finnhub}
+
+    # fallback: yfinance .info (로컬에서만 동작)
+    result = dict(_empty)
     try:
         info = _yf_info(ticker)
     except Exception:
