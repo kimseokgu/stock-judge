@@ -38,7 +38,8 @@ def save_watchlist(stocks: list[str]):
 # ── 종목 리스트 API ──────────────────────────────
 @app.get("/watchlist")
 def get_watchlist():
-    return load_watchlist()
+    tickers = load_watchlist()
+    return [{"ticker": t, "name": _TICKER_NAME.get(t, t)} for t in tickers]
 
 
 @app.post("/watchlist/{ticker}")
@@ -47,7 +48,7 @@ def add_to_watchlist(ticker: str):
     if ticker not in stocks:
         stocks.append(ticker)
         save_watchlist(stocks)
-    return stocks
+    return [{"ticker": t, "name": _TICKER_NAME.get(t, t)} for t in stocks]
 
 
 @app.delete("/watchlist/{ticker}")
@@ -55,7 +56,7 @@ def remove_from_watchlist(ticker: str):
     stocks = load_watchlist()
     stocks = [s for s in stocks if s != ticker]
     save_watchlist(stocks)
-    return stocks
+    return [{"ticker": t, "name": _TICKER_NAME.get(t, t)} for t in stocks]
 
 
 # ── 검색 & 분석 ──────────────────────────────────
@@ -95,9 +96,24 @@ def analyze_ticker(ticker: str):
         "total_score": result["total_score"],
         "technical_score": result["technical_score"],
         "financial_score": result["financial_score"],
+        "reasons": result["reasons"],
         "indicators": ind,
         "financials": fin,
     }
+
+
+@app.get("/debug/fin/{ticker}")
+def debug_fin(ticker: str):
+    import yfinance as yf, traceback
+    try:
+        info = yf.Ticker(ticker).info
+        keys = ["trailingPE","priceToBook","returnOnEquity","returnOnAssets",
+                "revenueGrowth","operatingMargins","grossMargins","earningsGrowth",
+                "freeCashflow","marketCap","currentRatio","enterpriseToEbitda",
+                "totalDebt","totalStockholderEquity"]
+        return {k: info.get(k) for k in keys}
+    except Exception as e:
+        return {"error": str(e), "trace": traceback.format_exc()}
 
 
 @app.get("/price/{ticker}")

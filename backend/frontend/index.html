@@ -255,23 +255,24 @@ let searchTimer = null;
 const isMobile = () => window.innerWidth < 768;
 
 /* ── 종목 리스트 서버 동기화 ── */
+// stocks = [{ticker, name}, ...]
 async function loadWatchlist() {
   try {
     const r = await fetch(`${API}/watchlist`);
     stocks = await r.json();
   } catch { stocks = []; }
   renderAll();
-  if (stocks.length > 0) selectStock(stocks[0]);
+  if (stocks.length > 0) selectStock(stocks[0].ticker);
 }
 
 async function serverAdd(ticker) {
-  await fetch(`${API}/watchlist/${ticker}`, { method: "POST" });
-  stocks = await (await fetch(`${API}/watchlist`)).json();
+  const r = await fetch(`${API}/watchlist/${ticker}`, { method: "POST" });
+  stocks = await r.json();
 }
 
 async function serverDelete(ticker) {
-  await fetch(`${API}/watchlist/${ticker}`, { method: "DELETE" });
-  stocks = await (await fetch(`${API}/watchlist`)).json();
+  const r = await fetch(`${API}/watchlist/${ticker}`, { method: "DELETE" });
+  stocks = await r.json();
 }
 
 /* ── 렌더링 ── */
@@ -284,11 +285,12 @@ function renderPcSidebar() {
   const el = document.getElementById("pcStockList");
   if (!el) return;
   el.innerHTML = stocks.map(s => `
-    <div class="stock-list-item ${s===selected?'active':''}" onclick="selectStock('${s}')">
+    <div class="stock-list-item ${s.ticker===selected?'active':''}" onclick="selectStock('${s.ticker}')">
       <div class="sli-left">
-        <span class="sli-ticker">${s}</span>
+        <span class="sli-ticker">${s.name !== s.ticker ? s.name : s.ticker}</span>
+        ${s.name !== s.ticker ? `<span class="sli-name">${s.ticker}</span>` : ''}
       </div>
-      <button class="sli-delete" onclick="deleteStock(event,'${s}')">✕</button>
+      <button class="sli-delete" onclick="deleteStock(event,'${s.ticker}')">✕</button>
     </div>`).join("");
 }
 
@@ -296,8 +298,8 @@ function renderMobileTabs() {
   const el = document.getElementById("mobileTabs");
   if (!el) return;
   el.innerHTML = stocks.map(s => `
-    <button class="mtab ${s===selected?'active':''}" onclick="selectStock('${s}')">
-      ${s}<span class="mtab-x" onclick="deleteStock(event,'${s}')">✕</span>
+    <button class="mtab ${s.ticker===selected?'active':''}" onclick="selectStock('${s.ticker}')">
+      ${s.name !== s.ticker ? s.name : s.ticker}<span class="mtab-x" onclick="deleteStock(event,'${s.ticker}')">✕</span>
     </button>`).join("");
 }
 
@@ -335,7 +337,7 @@ window.onSelectProxy = async function(ticker, name, sugId, inputId) {
   document.getElementById(sugId).style.display = "none";
   document.getElementById(inputId).value = "";
   if (sugId === "msoList") closeMobileSearch();
-  if (!stocks.includes(ticker)) {
+  if (!stocks.some(s => s.ticker === ticker)) {
     await serverAdd(ticker);
   }
   renderAll();
@@ -558,7 +560,7 @@ function renderPC(data) {
         <span class="score-num">${data.total_score}<span style="font-size:0.85rem;color:#8b95a1;font-weight:400"> / 100</span></span>
       </div>
       <div class="progress-wrap"><div class="progress-fill" style="width:${data.total_score}%"></div></div>
-      <div class="score-sub"><span>기술적 ${data.technical_score}/60</span><span>재무 ${data.financial_score}/40</span></div>
+      <div class="score-sub"><span>기술적 ${data.technical_score}/40</span><span>재무 ${data.financial_score}/60</span></div>
     </div>
 
     <div class="ind-card">
@@ -600,7 +602,7 @@ function renderMobile(data) {
         <span style="font-size:1.6rem;font-weight:800">${data.total_score}<span style="font-size:0.85rem;color:#8b95a1;font-weight:400"> / 100</span></span>
       </div>
       <div class="progress-wrap"><div class="progress-fill" style="width:${data.total_score}%"></div></div>
-      <div class="score-sub"><span>기술적 ${data.technical_score}/60</span><span>재무 ${data.financial_score}/40</span></div>
+      <div class="score-sub"><span>기술적 ${data.technical_score}/40</span><span>재무 ${data.financial_score}/60</span></div>
     </div>
 
     <div class="m-section">
