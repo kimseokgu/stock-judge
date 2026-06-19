@@ -66,15 +66,45 @@ def search(q: str = ""):
 
 
 @app.get("/chart/{ticker}")
-def chart_data(ticker: str, period: str = "3m"):
+def chart_data(ticker: str, period: str = "1d"):
+    if period == "1d":
+        return _intraday_chart(ticker)
     period_map = {"1w": 5, "1m": 21, "3m": 63, "1y": 120}
     count = period_map.get(period, 63)
     df = get_daily_ohlcv(ticker, count=120)
     df = df.tail(count)
     return [
-        {"date": str(row["date"])[:10], "close": float(row["close"])}
+        {"date": str(row["date"])[:10], "close": float(row["close"]), "intraday": False}
         for _, row in df.iterrows()
     ]
+
+
+def _intraday_chart(ticker: str):
+    import yfinance as yf
+    from kis_client import _to_yf_ticker, is_korean, get_usd_krw
+    yf_ticker = _to_yf_ticker(ticker)
+    df = yf.download(yf_ticker, period="1d", interval="5m", progress=False, auto_adjust=True)
+    if df.empty:
+        return []
+    df = df.reset_index()
+    if hasattr(df.columns, "levels"):
+        df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
+    df.columns = [c.lower() for c in df.columns]
+    time_col = "datetime" if "datetime" in df.columns else "date"
+    rate = get_usd_krw() if not is_korean(ticker) else 1.0
+    result = []
+    for _, row in df.iterrows():
+        t = str(row[time_col])
+        # HH:MM 형식으로 시간만 추출
+        if "T" in t:
+            label = t.split("T")[1][:5]
+        elif " " in t:
+            label = t.split(" ")[1][:5]
+        else:
+            label = t[11:16] if len(t) > 11 else t
+        close = float(row["close"]) * rate
+        result.append({"date": label, "close": round(close), "intraday": True})
+    return result
 
 
 @app.get("/analyze/{ticker}")

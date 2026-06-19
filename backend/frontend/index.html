@@ -440,7 +440,7 @@ function maLabel(ind) {
 
 /* ── 차트 ── */
 let chartData = [];
-let chartPeriod = "3m";
+let chartPeriod = "1d";
 let livePrice = null;
 
 async function loadChart(ticker, period) {
@@ -524,11 +524,11 @@ function chartHTML(ticker, cls) {
   <canvas id="priceChart" width="800" height="220"
     style="width:100%;height:220px;display:block"></canvas>
   <div style="display:flex;gap:4px;justify-content:center;margin-top:12px">
-    ${["1w","1m","3m","1y"].map(p => `
+    ${["1d","1w","1m","3m","1y"].map(p => `
       <button onclick="loadChart('${ticker}','${p}')" id="cBtn_${p}"
         style="padding:6px 14px;border-radius:20px;border:none;cursor:pointer;font-size:0.83rem;font-weight:600;
                background:${p===chartPeriod?'#191f28':'#f2f4f6'};color:${p===chartPeriod?'#fff':'#8b95a1'}">
-        ${{'"1w"':'1주','"1m"':'1달','"3m"':'3달','"1y"':'1년'}['"'+p+'"']}
+        ${{'"1d"':'1일','"1w"':'1주','"1m"':'1달','"3m"':'3달','"1y"':'1년'}['"'+p+'"']}
       </button>`).join("")}
   </div>`;
 }
