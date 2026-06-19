@@ -42,7 +42,7 @@ STOCKS = [
     {"name": "Microsoft", "ticker": "MSFT", "market": "US"},
     {"name": "NVIDIA", "ticker": "NVDA", "market": "US"},
     {"name": "Amazon", "ticker": "AMZN", "market": "US"},
-    {"name": "Google", "ticker": "GOOGL", "market": "US"},
+    {"name": "알파벳A", "ticker": "GOOGL", "market": "US"},
     {"name": "Meta", "ticker": "META", "market": "US"},
     {"name": "Tesla", "ticker": "TSLA", "market": "US"},
     {"name": "Berkshire Hathaway", "ticker": "BRK-B", "market": "US"},
