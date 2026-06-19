@@ -1,4 +1,5 @@
 import json
+import subprocess
 from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,6 +39,16 @@ def load_watchlist() -> list[str]:
 
 def save_watchlist(stocks: list[str]):
     WATCHLIST_FILE.write_text(json.dumps(stocks, ensure_ascii=False), encoding="utf-8")
+
+
+@app.get("/version")
+def get_version():
+    try:
+        v = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"],
+                                    cwd=Path(__file__).parent, text=True).strip()
+    except Exception:
+        v = "unknown"
+    return {"version": v}
 
 
 # ── 종목 리스트 API ──────────────────────────────

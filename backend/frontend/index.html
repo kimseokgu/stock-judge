@@ -748,6 +748,18 @@ function initSortable() {
   }
 }
 
+/* ── 자동 업데이트 (30초마다 버전 체크) ── */
+let _appVersion = null;
+async function checkVersion() {
+  try {
+    const r = await fetch(`${API}/version`);
+    const d = await r.json();
+    if (!_appVersion) { _appVersion = d.version; return; }
+    if (d.version !== _appVersion) location.reload();
+  } catch {}
+}
+setInterval(checkVersion, 30000);
+
 /* ── 기기 간 목록 동기화 (10초마다) ── */
 async function syncWatchlist() {
   try {
