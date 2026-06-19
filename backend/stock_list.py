@@ -31,6 +31,12 @@ STOCKS = [
     {"name": "엔씨소프트", "ticker": "036570", "market": "KR"},
     {"name": "넷마블", "ticker": "251270", "market": "KR"},
     {"name": "코스모화학", "ticker": "005420", "market": "KR"},
+    # 한국 ETF
+    {"name": "KODEX 200", "ticker": "069500", "market": "KR"},
+    {"name": "TIGER 미국우주테크", "ticker": "458730", "market": "KR"},
+    {"name": "KODEX 미국S&P500", "ticker": "379800", "market": "KR"},
+    {"name": "KODEX 삼성전자단일종목레버리지", "ticker": "243890", "market": "KR"},
+    {"name": "ACE KRX금현물", "ticker": "411060", "market": "KR"},
     # 미국 대형주
     {"name": "Apple", "ticker": "AAPL", "market": "US"},
     {"name": "Microsoft", "ticker": "MSFT", "market": "US"},
