@@ -470,7 +470,8 @@ async function loadChart(ticker, period) {
       const last = chartData[chartData.length - 1];
       if (last) last.close = livePrice;
     }
-    drawChart(ticker);
+    drawChart(ticker, "priceChart");
+    drawChart(ticker, "priceChartMobile");
   } catch {}
 }
 
@@ -479,8 +480,8 @@ function _timeToMin(hhmm) {
   return h * 60 + m;
 }
 
-function drawChart(ticker) {
-  const canvas = document.getElementById("priceChart");
+function drawChart(ticker, canvasId="priceChart") {
+  const canvas = document.getElementById(canvasId);
   if (!canvas || !chartData.length) return;
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
@@ -555,9 +556,9 @@ function drawChart(ticker) {
   ctx.fill();
 }
 
-function chartHTML(ticker, cls) {
+function chartHTML(ticker, cls, canvasId="priceChart") {
   return `
-  <canvas id="priceChart" width="800" height="220"
+  <canvas id="${canvasId}" width="800" height="220"
     style="width:100%;height:220px;display:block"></canvas>
   <div style="display:flex;gap:4px;justify-content:center;margin-top:12px">
     ${["1d","1w","1m","3m","1y"].map(p => `
@@ -632,7 +633,7 @@ function renderMobile(data) {
       <div class="m-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
       <div class="m-price-main ${cls}" id="mobileLivePrice">${Number(c.price).toLocaleString()}원</div>
       <div class="m-price-chg ${cls}">${sgn} ${Math.abs(cr)}% <span id="mobilePriceTime" style="font-size:0.7rem;color:#c4c9d1;font-weight:400;margin-left:4px"></span></div>
-      <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
+      <div style="margin-top:16px">${chartHTML(data.ticker, cls, "priceChartMobile")}</div>
     </div>
 
     <div class="m-section">
@@ -726,7 +727,8 @@ function updatePriceUI(price, ticker) {
   });
   if (chartData.length) {
     chartData[chartData.length - 1].close = price;
-    drawChart(ticker);
+    drawChart(ticker, "priceChart");
+    drawChart(ticker, "priceChartMobile");
   }
 }
 
