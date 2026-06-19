@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>주식 판단기</title>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -285,6 +286,7 @@ async function serverDelete(ticker) {
 function renderAll() {
   renderPcSidebar();
   renderMobileSidebar();
+  setTimeout(initSortable, 0);
 }
 
 function renderPcSidebar() {
@@ -686,7 +688,7 @@ function startPricePoller(ticker) {
       const d = await r.json();
       if (d.price) updatePriceUI(d.price, ticker);
     } catch {}
-  }, 30000);
+  }, 5000);
 }
 
 function connectWS(ticker) {
@@ -700,6 +702,45 @@ function connectWS(ticker) {
   ws.onerror = () => {};
   ws.onclose = () => {};
   startPricePoller(ticker);
+}
+
+/* ── 드래그 정렬 ── */
+async function saveOrder() {
+  const order = stocks.map(s => s.ticker);
+  try {
+    const r = await fetch(`${API}/watchlist/reorder`, {
+      method: "PUT",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(order),
+    });
+    stocks = await r.json();
+  } catch {}
+}
+
+function initSortable() {
+  const pcList = document.getElementById("pcStockList");
+  if (pcList && !pcList._sortable) {
+    pcList._sortable = new Sortable(pcList, {
+      animation: 150,
+      handle: ".stock-list-item",
+      onEnd(evt) {
+        const moved = stocks.splice(evt.oldIndex, 1)[0];
+        stocks.splice(evt.newIndex, 0, moved);
+        saveOrder();
+      },
+    });
+  }
+  const mList = document.getElementById("mobileSidebarList");
+  if (mList && !mList._sortable) {
+    mList._sortable = new Sortable(mList, {
+      animation: 150,
+      onEnd(evt) {
+        const moved = stocks.splice(evt.oldIndex, 1)[0];
+        stocks.splice(evt.newIndex, 0, moved);
+        saveOrder();
+      },
+    });
+  }
 }
 
 /* ── 시작 ── */

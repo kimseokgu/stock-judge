@@ -64,6 +64,14 @@ def remove_from_watchlist(ticker: str):
     return [{"ticker": t, "name": _TICKER_NAME.get(t, t)} for t in stocks]
 
 
+@app.put("/watchlist/reorder")
+def reorder_watchlist(order: list[str]):
+    existing = set(load_watchlist())
+    new_order = [t for t in order if t in existing]
+    save_watchlist(new_order)
+    return [{"ticker": t, "name": _TICKER_NAME.get(t, t)} for t in new_order]
+
+
 # ── 검색 & 분석 ──────────────────────────────────
 @app.get("/search")
 def search(q: str = ""):
