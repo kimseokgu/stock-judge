@@ -27,21 +27,46 @@ def is_korean(ticker: str) -> bool:
     return code.isdigit() and len(code) == 6
 
 
+def _naver_price(code: str) -> dict:
+    """네이버 금융 API로 한국 주식 현재가 조회."""
+    resp = httpx.get(
+        f"https://m.stock.naver.com/api/stock/{code}/basic",
+        headers={"User-Agent": "Mozilla/5.0"},
+        timeout=10,
+    )
+    resp.raise_for_status()
+    d = resp.json()
+    price = int(d.get("closePrice", "0").replace(",", ""))
+    cr = float(d.get("fluctuationsRatio", "0"))
+    volume = int(d.get("accumulatedTradingVolume", "0").replace(",", ""))
+    return {"price": price, "change_rate": cr, "volume": volume}
+
+
 def get_current_price(ticker: str) -> dict:
     """현재가 조회. 반환: {price, change_rate, volume}"""
     code = ticker.replace(".KS", "").replace(".KQ", "")
     if is_korean(ticker):
-        url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price"
-        params = {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code}
-        headers = {**auth_headers(), "tr_id": "FHKST01010100"}
-        resp = httpx.get(url, headers=headers, params=params, timeout=10)
-        resp.raise_for_status()
-        output = resp.json()["output"]
-        return {
-            "price": int(output["stck_prpr"]),
-            "change_rate": float(output["prdy_ctrt"]),
-            "volume": int(output["acml_vol"]),
-        }
+        # KIS API는 해외 IP 차단 → 네이버 금융으로 대체
+        try:
+            return _naver_price(code)
+        except Exception:
+            pass
+        # 네이버 실패 시 KIS 시도
+        try:
+            url = f"{BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price"
+            params = {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code}
+            headers = {**auth_headers(), "tr_id": "FHKST01010100"}
+            resp = httpx.get(url, headers=headers, params=params, timeout=10)
+            resp.raise_for_status()
+            output = resp.json()["output"]
+            return {
+                "price": int(output["stck_prpr"]),
+                "change_rate": float(output["prdy_ctrt"]),
+                "volume": int(output["acml_vol"]),
+            }
+        except Exception:
+            pass
+        return {"price": 0, "change_rate": 0.0, "volume": 0}
     else:
         try:
             url = f"{BASE_URL}/uapi/overseas-price/v1/quotations/price"
