@@ -117,6 +117,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   .ind-row:last-child { border-bottom: none; }
   .ind-left { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; }
   .ind-val  { font-size: 0.88rem; font-weight: 500; }
+  .tip-icon { display: inline-flex; align-items: center; justify-content: center;
+              width: 15px; height: 15px; border-radius: 50%; background: #f2f4f6;
+              color: #8b95a1; font-size: 0.6rem; font-weight: 700; cursor: pointer;
+              flex-shrink: 0; user-select: none; }
+  .tip-box { display: none; grid-column: 1/-1; font-size: 0.75rem; color: #555;
+             background: #f8f9fa; border-radius: 8px; padding: 8px 10px;
+             line-height: 1.5; margin: 2px 0 6px; }
+  .tip-box.show { display: block; }
+  .ind-row-wrap { display: contents; }
 }
 
 /* ═══════════════════════════════════
@@ -135,15 +144,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                overflow-y: auto; overflow-x: hidden; scrollbar-width: none; position: relative; }
   .m-sidebar::-webkit-scrollbar { display: none; }
   .m-sidebar-logo { padding: 12px 0 8px; text-align: center; font-size: 1.2rem; }
-  .m-sidebar-item { position: relative; overflow: hidden; border-left: 3px solid transparent; cursor: pointer; }
-  .m-sidebar-item.active { border-left-color: #3182f6; }
-  .m-sidebar-delete-bg { position: absolute; inset: 0; background: #f04452;
-                         display: flex; align-items: center; justify-content: center;
-                         color: #fff; font-size: 0.6rem; font-weight: 700; }
-  .m-sidebar-inner { display: flex; flex-direction: column; align-items: center;
-                     padding: 10px 4px; background: #fff; transition: transform 0.15s ease;
-                     will-change: transform; }
-  .m-sidebar-item.active .m-sidebar-inner { background: #f0f4ff; }
+  .m-sidebar-item { display: flex; flex-direction: column; align-items: center;
+                    padding: 10px 4px; cursor: pointer; border-left: 3px solid transparent; }
+  .m-sidebar-item.active { background: #f0f4ff; border-left-color: #3182f6; }
+  .m-sidebar-item:active { background: #f2f4f6; }
   .m-sidebar-name { font-size: 0.65rem; font-weight: 600; color: #444; text-align: center;
                     line-height: 1.3; word-break: keep-all; max-width: 80px;
                     overflow-wrap: break-word; }
@@ -211,6 +215,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   </div>
   <div class="sidebar-suggestions" id="pcSuggestions" style="display:none"></div>
   <div class="stock-list" id="pcStockList"></div>
+  <div id="pcTrashZone" style="display:none;margin:8px 12px;padding:10px;border-radius:10px;
+       background:#fff0f1;border:2px dashed #f04452;text-align:center;font-size:0.8rem;
+       color:#f04452;font-weight:600;transition:background 0.15s">
+    🗑 여기에 놓으면 삭제
+  </div>
   <div class="sidebar-add">
     <button class="sidebar-add-btn" onclick="document.getElementById('pcSearchInput').focus()">
       + 종목 추가
@@ -231,6 +240,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 <div class="m-sidebar" id="mobileSidebar">
   <div class="m-sidebar-logo">📈</div>
   <div id="mobileSidebarList"></div>
+  <div id="mobileTrashZone" style="display:none;margin:4px;padding:8px 2px;border-radius:8px;
+       background:#fff0f1;border:2px dashed #f04452;text-align:center;font-size:0.6rem;
+       color:#f04452;font-weight:700;line-height:1.4">
+    🗑<br>삭제
+  </div>
   <div class="m-sidebar-add">
     <button onclick="openMobileSearch()" title="종목 추가">＋</button>
   </div>
@@ -294,7 +308,7 @@ function renderPcSidebar() {
   const el = document.getElementById("pcStockList");
   if (!el) return;
   el.innerHTML = stocks.map(s => `
-    <div class="stock-list-item ${s.ticker===selected?'active':''}" onclick="selectStock('${s.ticker}')">
+    <div class="stock-list-item ${s.ticker===selected?'active':''}" data-ticker="${s.ticker}" onclick="selectStock('${s.ticker}')">
       <div class="sli-left">
         <span class="sli-ticker">${s.name !== s.ticker ? s.name : s.ticker}</span>
         ${s.name !== s.ticker ? `<span class="sli-name">${s.ticker}</span>` : ''}
@@ -313,14 +327,10 @@ function renderMobileSidebar() {
     const line2 = parts.slice(1).join(" ");
     const display = line2 ? `${line1}<br>${line2}` : line1;
     return `
-    <div class="m-sidebar-item ${s.ticker===selected?'active':''}" data-ticker="${s.ticker}">
-      <div class="m-sidebar-delete-bg">삭제</div>
-      <div class="m-sidebar-inner">
-        <span class="m-sidebar-name">${display}</span>
-      </div>
+    <div class="m-sidebar-item ${s.ticker===selected?'active':''}" data-ticker="${s.ticker}" onclick="selectStock('${s.ticker}')">
+      <span class="m-sidebar-name">${display}</span>
     </div>`;
   }).join("");
-  initSidebarSwipe();
 }
 
 /* ── 검색 ── */
@@ -687,37 +697,51 @@ function renderMobile(data) {
   loadChart(data.ticker, chartPeriod);
 }
 
+let _tipCounter = 0;
+function irow(badge, label, val, tipText) {
+  const id = "tip" + (_tipCounter++);
+  return `
+    <div style="border-bottom:1px solid #f2f4f6">
+      <div class="ind-row" style="border-bottom:none;padding-bottom:${tipText?'6px':'10px'}">
+        <div class="ind-left">${badge}<span>${label}</span>${tipText ? `<span class="tip-icon" onclick="document.getElementById('${id}').classList.toggle('show')">i</span>` : ''}</div>
+        <span class="ind-val">${val}</span>
+      </div>
+      ${tipText ? `<div class="tip-box" id="${id}">${tipText}</div>` : ''}
+    </div>`;
+}
+
 function indRows(ind) {
+  _tipCounter = 0;
   const maGood = ind.ma5 && ind.ma20 && ind.ma5 > ind.ma20;
   return `
-    <div class="ind-row"><div class="ind-left">${bdg(maGood,v=>v,()=>false)}<span>이동평균 (5/20/60)</span></div><span class="ind-val">${maLabel(ind)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(ind.rsi,v=>v>=30&&v<=50,v=>v>=70)}<span>RSI</span></div><span class="ind-val">${fmt(ind.rsi)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(ind.macd_cross,v=>v==='golden',v=>v==='dead')}<span>MACD</span></div><span class="ind-val">${ind.macd_cross==='golden'?'골든크로스':ind.macd_cross==='dead'?'데드크로스':'중립'}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(ind.bb_position,v=>v<=0.2,v=>v>=0.8)}<span>볼린저밴드</span></div><span class="ind-val">${fmt(ind.bb_position)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(ind.volume_ratio,v=>v>=1.5,v=>v<0.7)}<span>거래량 비율</span></div><span class="ind-val">${fmt(ind.volume_ratio)}x</span></div>`;
+    ${irow(bdg(maGood,v=>v,()=>false), '이동평균 (5/20/60)', maLabel(ind), '5일·20일·60일 이동평균선이 정배열(단기>중기>장기)이면 상승 추세. 역배열이면 하락 추세.')}
+    ${irow(bdg(ind.rsi,v=>v>=30&&v<=50,v=>v>=70), 'RSI', fmt(ind.rsi), 'RSI(상대강도지수): 0~100 범위. 70 이상은 과매수(조정 가능), 30 이하는 과매도(반등 가능), 30~50이면 매수 신호.')}
+    ${irow(bdg(ind.macd_cross,v=>v==='golden',v=>v==='dead'), 'MACD', ind.macd_cross==='golden'?'골든크로스':ind.macd_cross==='dead'?'데드크로스':'중립', 'MACD선이 시그널선을 위로 돌파하면 골든크로스(매수), 아래로 이탈하면 데드크로스(매도) 신호.')}
+    ${irow(bdg(ind.bb_position,v=>v<=0.2,v=>v>=0.8), '볼린저밴드', fmt(ind.bb_position), '볼린저밴드 내 현재가 위치. 0에 가까울수록 하단(과매도·매수 신호), 1에 가까울수록 상단(과매수·매도 신호).')}
+    ${irow(bdg(ind.volume_ratio,v=>v>=1.5,v=>v<0.7), '거래량 비율', fmt(ind.volume_ratio)+'x', '현재 거래량 ÷ 20일 평균 거래량. 1.5배 이상이면 강한 매수세, 0.7배 미만이면 거래 위축.')}`;
 }
 
 function finRows(fin) {
   const w52 = fin.week52_position != null ? Math.round(fin.week52_position * 100) + '%' : '-';
   return `
     <div style="font-size:0.72rem;color:#8b95a1;font-weight:600;padding:4px 0 2px;letter-spacing:0.04em">밸류에이션</div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.per,v=>v>0&&v<=15,v=>v>30)}<span>PER</span></div><span class="ind-val">${fmt(fin.per)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.ev_ebitda,v=>v>0&&v<=10,v=>v>20)}<span>EV/EBITDA</span></div><span class="ind-val">${fmt(fin.ev_ebitda)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.pbr,v=>v>0&&v<=1,v=>v>4)}<span>PBR</span></div><span class="ind-val">${fmt(fin.pbr)}</span></div>
+    ${irow(bdg(fin.per,v=>v>0&&v<=15,v=>v>30), 'PER', fmt(fin.per), '주가수익비율. 주가 ÷ 주당순이익. 낮을수록 저평가. 15 이하 매수 신호, 30 초과면 고평가 주의.')}
+    ${irow(bdg(fin.ev_ebitda,v=>v>0&&v<=10,v=>v>20), 'EV/EBITDA', fmt(fin.ev_ebitda), '기업가치 ÷ 세전영업이익. 부채 포함 기업 전체를 평가. 10 이하면 저평가, 20 초과면 고평가.')}
+    ${irow(bdg(fin.pbr,v=>v>0&&v<=1,v=>v>4), 'PBR', fmt(fin.pbr), '주가순자산비율. 주가 ÷ 주당순자산. 1 이하면 청산가치보다 싸게 거래 중(저평가), 4 초과면 고평가.')}
     <div style="font-size:0.72rem;color:#8b95a1;font-weight:600;padding:6px 0 2px;letter-spacing:0.04em">수익성</div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.roe,v=>v>=15,v=>v<0)}<span>ROE</span></div><span class="ind-val">${pct(fin.roe)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.roa,v=>v>=5,v=>v<0)}<span>ROA</span></div><span class="ind-val">${pct(fin.roa)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.operating_margin,v=>v>=10,v=>v<0)}<span>영업이익률</span></div><span class="ind-val">${pct(fin.operating_margin)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.gross_margin,v=>v>=30,v=>v<10)}<span>매출총이익률</span></div><span class="ind-val">${pct(fin.gross_margin)}</span></div>
+    ${irow(bdg(fin.roe,v=>v>=15,v=>v<0), 'ROE', pct(fin.roe), '자기자본이익률. 자기 자본으로 얼마나 벌었는지. 15% 이상이면 우수, 0% 미만이면 손실 중.')}
+    ${irow(bdg(fin.roa,v=>v>=5,v=>v<0), 'ROA', pct(fin.roa), '총자산이익률. 전체 자산 대비 수익. 5% 이상이면 효율적인 자산 운용.')}
+    ${irow(bdg(fin.operating_margin,v=>v>=10,v=>v<0), '영업이익률', pct(fin.operating_margin), '매출 대비 영업이익 비율. 높을수록 본업 경쟁력이 강함. 10% 이상이면 양호.')}
+    ${irow(bdg(fin.gross_margin,v=>v>=30,v=>v<10), '매출총이익률', pct(fin.gross_margin), '매출에서 원가를 뺀 이익의 비율. 높을수록 제품 경쟁력과 가격 결정력이 강함.')}
     <div style="font-size:0.72rem;color:#8b95a1;font-weight:600;padding:6px 0 2px;letter-spacing:0.04em">성장성</div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.revenue_growth,v=>v>=10,v=>v<-5)}<span>매출 성장률</span></div><span class="ind-val">${pct(fin.revenue_growth)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.eps_growth,v=>v>=10,v=>v<-10)}<span>EPS 성장률</span></div><span class="ind-val">${pct(fin.eps_growth)}</span></div>
+    ${irow(bdg(fin.revenue_growth,v=>v>=10,v=>v<-5), '매출 성장률', pct(fin.revenue_growth), '전년 대비 매출 증가율. 10% 이상이면 고성장, -5% 미만이면 역성장 주의.')}
+    ${irow(bdg(fin.eps_growth,v=>v>=10,v=>v<-10), 'EPS 성장률', pct(fin.eps_growth), '주당순이익 증가율. 이익이 얼마나 빠르게 늘고 있는지 보여줌. 10% 이상이면 양호.')}
     <div style="font-size:0.72rem;color:#8b95a1;font-weight:600;padding:6px 0 2px;letter-spacing:0.04em">재무 건전성</div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.fcf_yield,v=>v>=3,v=>v<0)}<span>FCF 수익률</span></div><span class="ind-val">${pct(fin.fcf_yield)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.current_ratio,v=>v>=1.5,v=>v<1)}<span>유동비율</span></div><span class="ind-val">${fmt(fin.current_ratio)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.debt_ratio,v=>v<=100,v=>v>300)}<span>부채비율</span></div><span class="ind-val">${pct(fin.debt_ratio)}</span></div>
-    <div class="ind-row"><div class="ind-left">${bdg(fin.dividend_yield,v=>v>=2,()=>false)}<span>배당수익률</span></div><span class="ind-val">${pct(fin.dividend_yield)}</span></div>
-    <div class="ind-row"><div class="ind-left"><span style="width:52px"></span><span>52주 위치</span></div><span class="ind-val">${w52}</span></div>`;
+    ${irow(bdg(fin.fcf_yield,v=>v>=3,v=>v<0), 'FCF 수익률', pct(fin.fcf_yield), '잉여현금흐름 수익률. 회사가 실제로 현금을 얼마나 버는지. 3% 이상이면 재무적으로 건강.')}
+    ${irow(bdg(fin.current_ratio,v=>v>=1.5,v=>v<1), '유동비율', fmt(fin.current_ratio), '유동자산 ÷ 유동부채. 단기 부채 상환 능력. 1.5 이상이면 안전, 1 미만이면 단기 유동성 위험.')}
+    ${irow(bdg(fin.debt_ratio,v=>v<=100,v=>v>300), '부채비율', pct(fin.debt_ratio), '부채 ÷ 자기자본. 낮을수록 재무 구조가 안정적. 100% 이하 양호, 300% 초과면 위험.')}
+    ${irow(bdg(fin.dividend_yield,v=>v>=2,()=>false), '배당수익률', pct(fin.dividend_yield), '주가 대비 배당금 비율. 2% 이상이면 배당 매력 있음. 배당을 안 주는 성장주는 0%.')}
+    ${irow(null, '52주 위치', w52, '현재가가 52주 최저가~최고가 사이 어디에 있는지. 100%면 최고가, 0%면 최저가. 80% 이상이면 신고가 근처.')}`;
 }
 
 /* ── 실시간 WebSocket + 30초 폴링 ── */
@@ -781,66 +805,66 @@ async function saveOrder() {
 
 function initSortable() {
   const pcList = document.getElementById("pcStockList");
+  const pcTrash = document.getElementById("pcTrashZone");
   if (pcList && !pcList._sortable) {
     pcList._sortable = new Sortable(pcList, {
+      group: { name: "pc-stocks", pull: true, put: false },
       animation: 150,
-      handle: ".stock-list-item",
+      onStart() { if (pcTrash) pcTrash.style.display = "block"; },
       onEnd(evt) {
-        const moved = stocks.splice(evt.oldIndex, 1)[0];
-        stocks.splice(evt.newIndex, 0, moved);
-        saveOrder();
+        if (pcTrash) pcTrash.style.display = "none";
+        if (evt.to === pcList) {
+          const moved = stocks.splice(evt.oldIndex, 1)[0];
+          stocks.splice(evt.newIndex, 0, moved);
+          saveOrder();
+        }
       },
     });
   }
+  if (pcTrash && !pcTrash._sortable) {
+    pcTrash._sortable = new Sortable(pcTrash, {
+      group: { name: "pc-stocks", put: true },
+      onAdd(evt) {
+        const ticker = evt.item.dataset.ticker;
+        evt.item.remove();
+        pcTrash.style.display = "none";
+        deleteStock(null, ticker);
+      },
+    });
+  }
+
   const mList = document.getElementById("mobileSidebarList");
+  const mTrash = document.getElementById("mobileTrashZone");
   if (mList && !mList._sortable) {
     mList._sortable = new Sortable(mList, {
+      group: { name: "m-stocks", pull: true, put: false },
       animation: 150,
+      delay: 150,
+      delayOnTouchOnly: true,
+      onStart() { if (mTrash) mTrash.style.display = "block"; },
       onEnd(evt) {
-        const moved = stocks.splice(evt.oldIndex, 1)[0];
-        stocks.splice(evt.newIndex, 0, moved);
-        saveOrder();
+        if (mTrash) mTrash.style.display = "none";
+        if (evt.to === mList) {
+          const moved = stocks.splice(evt.oldIndex, 1)[0];
+          stocks.splice(evt.newIndex, 0, moved);
+          saveOrder();
+        }
+      },
+    });
+  }
+  if (mTrash && !mTrash._sortable) {
+    mTrash._sortable = new Sortable(mTrash, {
+      group: { name: "m-stocks", put: true },
+      onAdd(evt) {
+        const ticker = evt.item.dataset.ticker;
+        evt.item.remove();
+        mTrash.style.display = "none";
+        deleteStock(null, ticker);
       },
     });
   }
 }
 
-function initSidebarSwipe() {
-  document.querySelectorAll("#mobileSidebarList .m-sidebar-item").forEach(item => {
-    const inner = item.querySelector(".m-sidebar-inner");
-    const ticker = item.dataset.ticker;
-    let startX = 0, startY = 0, dx = 0, dragging = false;
-
-    item.addEventListener("touchstart", e => {
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-      dx = 0; dragging = false;
-      inner.style.transition = "none";
-    }, { passive: true });
-
-    item.addEventListener("touchmove", e => {
-      const moveX = e.touches[0].clientX - startX;
-      const moveY = e.touches[0].clientY - startY;
-      if (!dragging && Math.abs(moveY) > Math.abs(moveX)) return;
-      dragging = true;
-      dx = Math.min(0, moveX);
-      inner.style.transform = `translateX(${dx}px)`;
-    }, { passive: true });
-
-    item.addEventListener("touchend", () => {
-      inner.style.transition = "transform 0.15s ease";
-      const threshold = item.offsetWidth * 0.5;
-      if (dragging && dx < -threshold) {
-        inner.style.transform = `translateX(-${item.offsetWidth}px)`;
-        setTimeout(() => deleteStock(null, ticker), 150);
-      } else {
-        inner.style.transform = "translateX(0)";
-        if (!dragging) selectStock(ticker);
-      }
-      dragging = false;
-    });
-  });
-}
 
 /* ── 자동 업데이트 (30초마다 버전 체크) ── */
 let _appVersion = null;
