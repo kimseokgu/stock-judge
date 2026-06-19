@@ -585,6 +585,7 @@ function renderPC(data) {
       <div class="stock-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
       <div class="price-big ${cls}" id="pcLivePrice">${Number(c.price).toLocaleString()}원</div>
       <div class="price-chg ${cls}">${sgn} ${Math.abs(cr)}% <span id="pcPriceTime" style="font-size:0.72rem;color:#c4c9d1;font-weight:400;margin-left:6px"></span></div>
+      <div style="margin-top:8px;font-size:0.72rem;color:#b0b8c1;line-height:1.5">※ 네이버·야후 무료 API 기반으로, 실제 시세 및 환율과 수초~수십 초 차이가 있을 수 있습니다.</div>
       <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
     </div>
 
@@ -638,6 +639,7 @@ function renderMobile(data) {
       <div class="m-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
       <div class="m-price-main ${cls}" id="mobileLivePrice">${Number(c.price).toLocaleString()}원</div>
       <div class="m-price-chg ${cls}">${sgn} ${Math.abs(cr)}% <span id="mobilePriceTime" style="font-size:0.7rem;color:#c4c9d1;font-weight:400;margin-left:4px"></span></div>
+      <div style="margin-top:8px;font-size:0.68rem;color:#b0b8c1;line-height:1.5">※ 네이버·야후 무료 API 기반으로, 실제 시세 및 환율과 수초~수십 초 차이가 있을 수 있습니다.</div>
       <div style="margin-top:16px">${chartHTML(data.ticker, cls, "priceChartMobile")}</div>
     </div>
 
