@@ -2,11 +2,20 @@ import pandas as pd
 import ta
 
 
+_EMPTY_IND = {
+    "ma5": None, "ma20": None, "ma60": None,
+    "rsi": None, "macd": None, "macd_signal": None, "macd_cross": "none",
+    "bb_upper": None, "bb_lower": None, "bb_position": 0.5, "volume_ratio": 1.0,
+}
+
+
 def calculate_indicators(df: pd.DataFrame) -> dict:
     """
     df 컬럼: close, high, low, volume (최소 60행 권장)
     반환: 지표 딕셔너리
     """
+    if df is None or len(df) < 5:
+        return dict(_EMPTY_IND)
     close = df["close"]
     high = df["high"]
     low = df["low"]
