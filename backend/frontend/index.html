@@ -135,18 +135,19 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                overflow-y: auto; overflow-x: hidden; scrollbar-width: none; position: relative; }
   .m-sidebar::-webkit-scrollbar { display: none; }
   .m-sidebar-logo { padding: 12px 0 8px; text-align: center; font-size: 1.2rem; }
-  .m-sidebar-item { display: flex; flex-direction: column; align-items: center;
-                    padding: 10px 4px; cursor: pointer; border-left: 3px solid transparent;
-                    position: relative; }
-  .m-sidebar-item.active { background: #f0f4ff; border-left-color: #3182f6; }
-  .m-sidebar-item:active { background: #f2f4f6; }
+  .m-sidebar-item { position: relative; overflow: hidden; border-left: 3px solid transparent; cursor: pointer; }
+  .m-sidebar-item.active { border-left-color: #3182f6; }
+  .m-sidebar-delete-bg { position: absolute; inset: 0; background: #f04452;
+                         display: flex; align-items: center; justify-content: center;
+                         color: #fff; font-size: 0.6rem; font-weight: 700; }
+  .m-sidebar-inner { display: flex; flex-direction: column; align-items: center;
+                     padding: 10px 4px; background: #fff; transition: transform 0.15s ease;
+                     will-change: transform; }
+  .m-sidebar-item.active .m-sidebar-inner { background: #f0f4ff; }
   .m-sidebar-name { font-size: 0.65rem; font-weight: 600; color: #444; text-align: center;
                     line-height: 1.3; word-break: keep-all; max-width: 80px;
                     overflow-wrap: break-word; }
   .m-sidebar-item.active .m-sidebar-name { color: #3182f6; }
-  .m-sidebar-del { display: block; position: absolute; top: 2px; right: 2px;
-                   font-size: 0.55rem; color: #c4c9d1; background: none; border: none;
-                   cursor: pointer; padding: 2px; line-height: 1; }
   .m-sidebar-add { padding: 10px 0; text-align: center; }
   .m-sidebar-add button { background: none; border: none; cursor: pointer;
                           font-size: 1.1rem; color: #8b95a1; }
@@ -307,17 +308,19 @@ function renderMobileSidebar() {
   if (!el) return;
   el.innerHTML = stocks.map(s => {
     const label = s.name !== s.ticker ? s.name : s.ticker;
-    // 공백 기준으로 최대 2줄로 나눔 (예: "KODEX 200" → "KODEX\n200")
     const parts = label.split(" ");
     const line1 = parts[0];
     const line2 = parts.slice(1).join(" ");
     const display = line2 ? `${line1}<br>${line2}` : line1;
     return `
-    <div class="m-sidebar-item ${s.ticker===selected?'active':''}" onclick="selectStock('${s.ticker}')">
-      <button class="m-sidebar-del" onclick="deleteStock(event,'${s.ticker}')">✕</button>
-      <span class="m-sidebar-name">${display}</span>
+    <div class="m-sidebar-item ${s.ticker===selected?'active':''}" data-ticker="${s.ticker}">
+      <div class="m-sidebar-delete-bg">삭제</div>
+      <div class="m-sidebar-inner">
+        <span class="m-sidebar-name">${display}</span>
+      </div>
     </div>`;
   }).join("");
+  initSidebarSwipe();
 }
 
 /* ── 검색 ── */
@@ -378,7 +381,7 @@ setupSearch("mobileSearchInput", "msoList");
 
 /* ── 삭제 ── */
 async function deleteStock(e, ticker) {
-  e.stopPropagation();
+  if (e) e.stopPropagation();
   await serverDelete(ticker);
   if (selected === ticker) {
     selected = null;
@@ -800,6 +803,43 @@ function initSortable() {
       },
     });
   }
+}
+
+function initSidebarSwipe() {
+  document.querySelectorAll("#mobileSidebarList .m-sidebar-item").forEach(item => {
+    const inner = item.querySelector(".m-sidebar-inner");
+    const ticker = item.dataset.ticker;
+    let startX = 0, startY = 0, dx = 0, dragging = false;
+
+    item.addEventListener("touchstart", e => {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      dx = 0; dragging = false;
+      inner.style.transition = "none";
+    }, { passive: true });
+
+    item.addEventListener("touchmove", e => {
+      const moveX = e.touches[0].clientX - startX;
+      const moveY = e.touches[0].clientY - startY;
+      if (!dragging && Math.abs(moveY) > Math.abs(moveX)) return;
+      dragging = true;
+      dx = Math.min(0, moveX);
+      inner.style.transform = `translateX(${dx}px)`;
+    }, { passive: true });
+
+    item.addEventListener("touchend", () => {
+      inner.style.transition = "transform 0.15s ease";
+      const threshold = item.offsetWidth * 0.5;
+      if (dragging && dx < -threshold) {
+        inner.style.transform = `translateX(-${item.offsetWidth}px)`;
+        setTimeout(() => deleteStock(null, ticker), 150);
+      } else {
+        inner.style.transform = "translateX(0)";
+        if (!dragging) selectStock(ticker);
+      }
+      dragging = false;
+    });
+  });
 }
 
 /* ── 자동 업데이트 (30초마다 버전 체크) ── */
