@@ -19,7 +19,7 @@ def score_technical(ind: dict) -> int:
             score += 8
 
     # RSI (10pt)
-    rsi = ind.get("rsi", 50)
+    rsi = ind.get("rsi") or 50
     if 30 <= rsi <= 50:
         score += 10
     elif 50 < rsi <= 60:
