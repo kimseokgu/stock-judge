@@ -70,7 +70,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* 모바일 전용 숨김 */
   .mobile-header, .mobile-search-overlay, .mobile-tab-bar,
-  .mobile-content { display: none !important; }
+  .mobile-content, .m-sidebar { display: none !important; }
 
   /* 메인 컨텐츠 영역 */
   .main { flex: 1; overflow-y: auto; padding: 24px; min-width: 0; }
@@ -152,7 +152,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
                           font-size: 1.1rem; color: #8b95a1; }
 
   /* 오른쪽 컨텐츠 */
-  .mobile-content { flex: 1; overflow-y: auto; background: #f8f9fa; padding-bottom: 40px; }
+  .mobile-content { display: block; flex: 1; overflow-y: auto; background: #f8f9fa; padding-bottom: 40px; min-width: 0; }
 
   /* 검색 오버레이 */
   .mobile-search-overlay { display: none; position: fixed; inset: 0;
