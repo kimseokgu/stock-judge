@@ -1,19 +1,58 @@
 import re
+import time
+import json
 import httpx
 import yfinance as yf
+from pathlib import Path
 from bs4 import BeautifulSoup
 
 _NAVER_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+_CACHE_FILE = Path(__file__).parent / "fin_cache.json"
+_CACHE_TTL = 24 * 3600  # 24시간
+
+
+def _load_cache() -> dict:
+    try:
+        if _CACHE_FILE.exists():
+            return json.loads(_CACHE_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
+
+def _save_cache(cache: dict):
+    try:
+        _CACHE_FILE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def _yf_info(ticker: str) -> dict:
+    """yfinance .info 호출 — rate limit 시 최대 2회 재시도."""
+    for attempt in range(3):
+        try:
+            return yf.Ticker(ticker).info
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(3 + attempt * 2)
+            else:
+                raise
 
 
 def get_financials(ticker: str) -> dict:
+    cache = _load_cache()
+    now = time.time()
+    if ticker in cache and now - cache[ticker]["ts"] < _CACHE_TTL:
+        return cache[ticker]["data"]
+
     code = ticker.replace(".KS", "").replace(".KQ", "").strip()
     is_korean = code.isdigit() and len(code) == 6
 
-    if is_korean:
-        return _get_korean_financials(code)
-    else:
-        return _get_us_financials(ticker)
+    data = _get_korean_financials(code) if is_korean else _get_us_financials(ticker)
+
+    cache[ticker] = {"ts": now, "data": data}
+    _save_cache(cache)
+    return data
 
 
 def _get_korean_financials(code: str) -> dict:
@@ -64,7 +103,7 @@ def _get_korean_financials(code: str) -> dict:
     }
 
     try:
-        info = yf.Ticker(code + ".KS").info
+        info = _yf_info(code + ".KS")
 
         def pct_field(key):
             v = info.get(key)
@@ -125,7 +164,7 @@ def _get_us_financials(ticker: str) -> dict:
     }
 
     try:
-        info = yf.Ticker(ticker).info
+        info = _yf_info(ticker)
     except Exception:
         return result
 
