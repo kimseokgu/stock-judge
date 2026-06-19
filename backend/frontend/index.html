@@ -743,6 +743,21 @@ function initSortable() {
   }
 }
 
+/* ── 기기 간 목록 동기화 (10초마다) ── */
+async function syncWatchlist() {
+  try {
+    const r = await fetch(`${API}/watchlist`);
+    const fresh = await r.json();
+    const freshKeys = fresh.map(s => s.ticker).join(",");
+    const currKeys = stocks.map(s => s.ticker).join(",");
+    if (freshKeys !== currKeys) {
+      stocks = fresh;
+      renderAll();
+    }
+  } catch {}
+}
+setInterval(syncWatchlist, 10000);
+
 /* ── 시작 ── */
 loadWatchlist();
 </script>
