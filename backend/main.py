@@ -25,10 +25,15 @@ app.add_middleware(
 WATCHLIST_FILE = Path(__file__).parent / "watchlist.json"
 
 
+_DEFAULT_WATCHLIST = [
+    "005930", "069500", "458730", "379800", "243890", "411060",
+    "GOOGL", "TSLA", "TSLL",
+]
+
 def load_watchlist() -> list[str]:
     if WATCHLIST_FILE.exists():
         return json.loads(WATCHLIST_FILE.read_text(encoding="utf-8"))
-    return ["AAPL", "005930"]
+    return list(_DEFAULT_WATCHLIST)
 
 
 def save_watchlist(stocks: list[str]):
