@@ -560,7 +560,7 @@ function renderPC(data) {
     <div class="price-card full-width">
       <div class="stock-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
       <div class="price-big ${cls}" id="pcLivePrice">${Number(c.price).toLocaleString()}원</div>
-      <div class="price-chg ${cls}">${sgn} ${Math.abs(cr)}%</div>
+      <div class="price-chg ${cls}">${sgn} ${Math.abs(cr)}% <span id="pcPriceTime" style="font-size:0.72rem;color:#c4c9d1;font-weight:400;margin-left:6px"></span></div>
       <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
     </div>
 
@@ -613,7 +613,7 @@ function renderMobile(data) {
     <div class="m-section">
       <div class="m-label">${data.name && data.name !== data.ticker ? data.name : data.ticker}<span style="font-size:0.75rem;color:#8b95a1;font-weight:400;margin-left:6px">${data.name && data.name !== data.ticker ? data.ticker : ''}</span></div>
       <div class="m-price-main ${cls}" id="mobileLivePrice">${Number(c.price).toLocaleString()}원</div>
-      <div class="m-price-chg ${cls}">${sgn} ${Math.abs(cr)}%</div>
+      <div class="m-price-chg ${cls}">${sgn} ${Math.abs(cr)}% <span id="mobilePriceTime" style="font-size:0.7rem;color:#c4c9d1;font-weight:400;margin-left:4px"></span></div>
       <div style="margin-top:16px">${chartHTML(data.ticker, cls)}</div>
     </div>
 
@@ -697,10 +697,15 @@ let pricePoller = null;
 function updatePriceUI(price, ticker) {
   livePrice = price;
   const v = Number(price).toLocaleString() + "원";
-  const p = document.getElementById("pcLivePrice");
-  const m = document.getElementById("mobileLivePrice");
-  if (p) p.textContent = v;
-  if (m) m.textContent = v;
+  const now = new Date().toLocaleTimeString("ko-KR", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+  ["pcLivePrice","mobileLivePrice"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = v;
+  });
+  ["pcPriceTime","mobilePriceTime"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = now;
+  });
   if (chartData.length) {
     chartData[chartData.length - 1].close = price;
     drawChart(ticker);

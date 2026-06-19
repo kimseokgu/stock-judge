@@ -36,8 +36,14 @@ def _naver_price(code: str) -> dict:
     )
     resp.raise_for_status()
     d = resp.json()
-    price = int(d.get("closePrice", "0").replace(",", ""))
-    cr = float(d.get("fluctuationsRatio", "0"))
+    # 장중엔 overMarketPriceInfo가 더 실시간
+    over = d.get("overMarketPriceInfo") or {}
+    if over.get("overPrice"):
+        price = int(over["overPrice"].replace(",", ""))
+        cr = float(over.get("fluctuationsRatio", d.get("fluctuationsRatio", "0")))
+    else:
+        price = int(d.get("closePrice", "0").replace(",", ""))
+        cr = float(d.get("fluctuationsRatio", "0"))
     volume = int(d.get("accumulatedTradingVolume", "0").replace(",", ""))
     return {"price": price, "change_rate": cr, "volume": volume}
 
