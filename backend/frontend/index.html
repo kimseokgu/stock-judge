@@ -615,6 +615,7 @@ function renderMobile(data) {
       <div class="m-label">재무 지표</div>
       ${finRows(fin)}
     </div>`;
+  loadChart(data.ticker, chartPeriod);
 }
 
 function indRows(ind) {
