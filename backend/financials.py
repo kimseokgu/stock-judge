@@ -27,14 +27,35 @@ def _save_cache(cache: dict):
         pass
 
 
+def _yf_session():
+    """브라우저처럼 쿠키를 먼저 획득한 세션 반환 — cloud IP 차단 우회."""
+    import requests
+    s = requests.Session()
+    s.headers.update({
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/125.0.0.0 Safari/537.36"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    })
+    try:
+        s.get("https://fc.yahoo.com", timeout=5)
+    except Exception:
+        pass
+    return s
+
+
 def _yf_info(ticker: str) -> dict:
-    """yfinance .info 호출 — rate limit 시 최대 2회 재시도."""
+    """yfinance .info 호출 — 브라우저 세션으로 rate limit 우회, 최대 2회 재시도."""
     for attempt in range(3):
         try:
-            return yf.Ticker(ticker).info
-        except Exception as e:
+            session = _yf_session()
+            return yf.Ticker(ticker, session=session).info
+        except Exception:
             if attempt < 2:
-                time.sleep(3 + attempt * 2)
+                time.sleep(4 + attempt * 3)
             else:
                 raise
 

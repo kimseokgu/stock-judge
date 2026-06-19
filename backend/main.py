@@ -104,9 +104,10 @@ def analyze_ticker(ticker: str):
 
 @app.get("/debug/fin/{ticker}")
 def debug_fin(ticker: str):
-    import yfinance as yf, traceback
+    import traceback
+    from financials import _yf_info
     try:
-        info = yf.Ticker(ticker).info
+        info = _yf_info(ticker)
         keys = ["trailingPE","priceToBook","returnOnEquity","returnOnAssets",
                 "revenueGrowth","operatingMargins","grossMargins","earningsGrowth",
                 "freeCashflow","marketCap","currentRatio","enterpriseToEbitda",
