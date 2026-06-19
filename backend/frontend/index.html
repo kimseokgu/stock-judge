@@ -474,6 +474,11 @@ async function loadChart(ticker, period) {
   } catch {}
 }
 
+function _timeToMin(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
 function drawChart(ticker) {
   const canvas = document.getElementById("priceChart");
   if (!canvas || !chartData.length) return;
@@ -485,8 +490,21 @@ function drawChart(ticker) {
   const range = maxP - minP || 1;
   const isUp = prices[prices.length - 1] >= prices[0];
   const color = isUp ? "#f04452" : "#3182f6";
+  const isIntraday = chartData[0] && chartData[0].intraday;
 
-  const xOf = i => PAD.left + (i / (prices.length - 1)) * (W - PAD.left - PAD.right);
+  let xOf;
+  if (isIntraday) {
+    // 시간 기반 x축: 한국 9:00~15:30, 미국 9:30~16:00
+    const isKorean = /^\d{6}$/.test(ticker);
+    const marketOpen = isKorean ? 9 * 60 : 9 * 60 + 30;
+    const marketClose = isKorean ? 15 * 60 + 30 : 16 * 60;
+    const totalMin = marketClose - marketOpen;
+    const times = chartData.map(d => _timeToMin(d.date));
+    xOf = i => PAD.left + ((times[i] - marketOpen) / totalMin) * (W - PAD.left - PAD.right);
+  } else {
+    xOf = i => PAD.left + (i / (prices.length - 1)) * (W - PAD.left - PAD.right);
+  }
+
   const yOf = p => PAD.top + (1 - (p - minP) / range) * (H - PAD.top - PAD.bottom);
 
   ctx.clearRect(0, 0, W, H);
@@ -529,7 +547,7 @@ function drawChart(ticker) {
     ctx.fill();
   });
 
-  // 현재 가격 점 (마지막)
+  // 현재 가격 점 (마지막) — 토스처럼 현재 시점에 점 표시
   const lastX = xOf(prices.length - 1), lastY = yOf(prices[prices.length - 1]);
   ctx.beginPath();
   ctx.arc(lastX, lastY, 4, 0, Math.PI * 2);
