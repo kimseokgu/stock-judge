@@ -123,26 +123,35 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 ═══════════════════════════════════ */
 @media (max-width: 767px) {
   .sidebar, .main, .pc-grid, .pc-empty { display: none !important; }
+  .mobile-header, .mobile-tab-bar { display: none !important; }
 
-  /* 상단 헤더 */
-  .mobile-header { background: #fff; position: sticky; top: 0; z-index: 100;
-                   border-bottom: 1px solid #f2f4f6; }
-  .mobile-header-top { display: flex; align-items: center; justify-content: space-between;
-                       padding: 14px 20px 0; }
-  .mobile-title { font-size: 1rem; font-weight: 800; }
-  .mobile-add-btn { width: 32px; height: 32px; border-radius: 50%; background: #f2f4f6;
-                    border: none; cursor: pointer; font-size: 1rem;
-                    display: flex; align-items: center; justify-content: center; }
+  /* 모바일 레이아웃: 왼쪽 사이드바 + 오른쪽 컨텐츠 */
+  body { display: flex; height: 100dvh; overflow: hidden; }
 
-  /* 탭 */
-  .mobile-tab-bar { display: flex; gap: 0; overflow-x: auto; padding: 8px 16px 0;
-                    scrollbar-width: none; }
-  .mobile-tab-bar::-webkit-scrollbar { display: none; }
-  .mtab { padding: 8px 14px; font-size: 0.88rem; font-weight: 500; color: #8b95a1;
-          border: none; background: transparent; cursor: pointer; white-space: nowrap;
-          border-bottom: 2px solid transparent; }
-  .mtab.active { color: #191f28; font-weight: 700; border-bottom: 2px solid #3182f6; }
-  .mtab-x { font-size: 0.65rem; color: #c4c9d1; margin-left: 3px; }
+  /* 왼쪽 종목 사이드바 */
+  .m-sidebar { display: flex; flex-direction: column; width: 68px; min-width: 68px;
+               height: 100dvh; background: #fff; border-right: 1px solid #f2f4f6;
+               overflow-y: auto; overflow-x: hidden; scrollbar-width: none; position: relative; }
+  .m-sidebar::-webkit-scrollbar { display: none; }
+  .m-sidebar-logo { padding: 12px 0 8px; text-align: center; font-size: 1.2rem; }
+  .m-sidebar-item { display: flex; flex-direction: column; align-items: center;
+                    padding: 10px 4px; cursor: pointer; border-left: 3px solid transparent;
+                    position: relative; }
+  .m-sidebar-item.active { background: #f0f4ff; border-left-color: #3182f6; }
+  .m-sidebar-item:active { background: #f2f4f6; }
+  .m-sidebar-name { font-size: 0.62rem; font-weight: 600; color: #444; text-align: center;
+                    line-height: 1.2; word-break: keep-all; max-width: 56px; }
+  .m-sidebar-item.active .m-sidebar-name { color: #3182f6; }
+  .m-sidebar-del { display: none; position: absolute; top: 2px; right: 2px;
+                   font-size: 0.55rem; color: #c4c9d1; background: none; border: none;
+                   cursor: pointer; padding: 2px; line-height: 1; }
+  .m-sidebar-item:hover .m-sidebar-del { display: block; }
+  .m-sidebar-add { padding: 10px 0; text-align: center; }
+  .m-sidebar-add button { background: none; border: none; cursor: pointer;
+                          font-size: 1.1rem; color: #8b95a1; }
+
+  /* 오른쪽 컨텐츠 */
+  .mobile-content { flex: 1; overflow-y: auto; background: #f8f9fa; padding-bottom: 40px; }
 
   /* 검색 오버레이 */
   .mobile-search-overlay { display: none; position: fixed; inset: 0;
@@ -160,13 +169,10 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   .mso-name { font-size: 0.93rem; font-weight: 500; }
   .mso-ticker { font-size: 0.82rem; color: #8b95a1; }
 
-  /* 모바일 컨텐츠 */
-  .mobile-content { padding-bottom: 40px; }
-
-  .m-section { background: #fff; margin-bottom: 8px; padding: 20px; }
+  .m-section { background: #fff; margin-bottom: 8px; padding: 16px; }
   .m-label { font-size: 0.75rem; color: #8b95a1; font-weight: 500; margin-bottom: 10px; }
 
-  .m-price-main { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; }
+  .m-price-main { font-size: 1.7rem; font-weight: 800; letter-spacing: -0.5px; }
   .m-price-chg  { font-size: 0.88rem; margin-top: 4px; }
 
   .verdict-badge { display: inline-flex; align-items: center; gap: 8px;
@@ -219,13 +225,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   <div id="pcContent" style="display:none"></div>
 </div>
 
-<!-- ══════════════ 모바일: 헤더 ══════════════ -->
-<div class="mobile-header">
-  <div class="mobile-header-top">
-    <span class="mobile-title">📈 주식 판단기</span>
-    <button class="mobile-add-btn" onclick="openMobileSearch()">＋</button>
+<!-- ══════════════ 모바일: 사이드바 ══════════════ -->
+<div class="m-sidebar" id="mobileSidebar">
+  <div class="m-sidebar-logo">📈</div>
+  <div id="mobileSidebarList"></div>
+  <div class="m-sidebar-add">
+    <button onclick="openMobileSearch()" title="종목 추가">＋</button>
   </div>
-  <div class="mobile-tab-bar" id="mobileTabs"></div>
 </div>
 
 <!-- 모바일 검색 오버레이 -->
@@ -278,7 +284,7 @@ async function serverDelete(ticker) {
 /* ── 렌더링 ── */
 function renderAll() {
   renderPcSidebar();
-  renderMobileTabs();
+  renderMobileSidebar();
 }
 
 function renderPcSidebar() {
@@ -294,13 +300,18 @@ function renderPcSidebar() {
     </div>`).join("");
 }
 
-function renderMobileTabs() {
-  const el = document.getElementById("mobileTabs");
+function renderMobileSidebar() {
+  const el = document.getElementById("mobileSidebarList");
   if (!el) return;
-  el.innerHTML = stocks.map(s => `
-    <button class="mtab ${s.ticker===selected?'active':''}" onclick="selectStock('${s.ticker}')">
-      ${s.name !== s.ticker ? s.name : s.ticker}<span class="mtab-x" onclick="deleteStock(event,'${s.ticker}')">✕</span>
-    </button>`).join("");
+  el.innerHTML = stocks.map(s => {
+    const label = s.name !== s.ticker ? s.name : s.ticker;
+    const short = label.length > 5 ? label.slice(0, 5) + "…" : label;
+    return `
+    <div class="m-sidebar-item ${s.ticker===selected?'active':''}" onclick="selectStock('${s.ticker}')">
+      <button class="m-sidebar-del" onclick="deleteStock(event,'${s.ticker}')">✕</button>
+      <span class="m-sidebar-name">${short}</span>
+    </div>`;
+  }).join("");
 }
 
 /* ── 검색 ── */
