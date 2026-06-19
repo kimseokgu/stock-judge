@@ -462,6 +462,12 @@ let livePrice = null;
 
 async function loadChart(ticker, period) {
   chartPeriod = period;
+  ["1d","1w","1m","3m","1y"].forEach(p => {
+    document.querySelectorAll(`#cBtn_${p}`).forEach(btn => {
+      btn.style.background = p === period ? "#191f28" : "#f2f4f6";
+      btn.style.color = p === period ? "#fff" : "#8b95a1";
+    });
+  });
   try {
     const r = await fetch(`${API}/chart/${ticker}?period=${period}`);
     chartData = await r.json();
